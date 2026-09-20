@@ -12,25 +12,21 @@
 
     <application
         android:label="Need for Speed: Most Wanted"
-        android:hasCode="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:hasCode="true"
+        android:theme="@style/Theme.NFSMW.Title"
         android:requestLegacyExternalStorage="true"
         android:extractNativeLibs="true">
 
+        <!-- Tela de Título Fullscreen Adaptável -->
         <activity
-            android:name="android.app.NativeActivity"
+            android:name="com.ea.nfsmw.TitleActivity"
             android:label="Need for Speed: Most Wanted"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:theme="@style/Theme.NFSMW.Title"
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode"
-            android:alwaysRetainTaskState="true"
-            android:launchMode="singleInstance"
-            android:turnScreenOn="true"
-            android:showWhenLocked="true"
-            android:keepScreenOn="true"
             android:exported="true">
-
-            <!-- Name of the native library without lib prefix or .so extension -->
-            <meta-data android:name="android.app.lib_name" android:value="nfsmw" />
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -38,6 +34,21 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
                 <category android:name="android.intent.category.GAME" />
             </intent-filter>
+        </activity>
+
+        <!-- Atividade Nativa do Jogo (Xenos Vulkan NDK + VirtualControlsView) -->
+        <activity
+            android:name="com.ea.nfsmw.GameActivity"
+            android:label="Need for Speed: Most Wanted"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode"
+            android:alwaysRetainTaskState="true"
+            android:launchMode="singleInstance"
+            android:exported="true">
+
+            <!-- Name of the native library without lib prefix or .so extension -->
+            <meta-data android:name="android.app.lib_name" android:value="nfsmw" />
         </activity>
     </application>
 </manifest>

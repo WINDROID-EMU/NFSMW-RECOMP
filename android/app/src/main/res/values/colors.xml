@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="nfsmw_amber">#FFB800</color>
+    <color name="nfsmw_amber_light">#FFE066</color>
+    <color name="nfsmw_amber_dark">#B38000</color>
+    <color name="nfsmw_amber_glow">#66FFB800</color>
+    <color name="nfsmw_black">#080808</color>
+    <color name="nfsmw_dark_overlay">#80000000</color>
+    <color name="nfsmw_vignette">#CC000000</color>
+    <color name="nfsmw_white">#FFFFFF</color>
+    <color name="nfsmw_green">#00E676</color>
+    <color name="nfsmw_orange">#FF9100</color>
+    <color name="nfsmw_red">#FF5252</color>
+</resources>

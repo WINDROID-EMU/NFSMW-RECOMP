@@ -2,6 +2,7 @@
 #include <android/log.h>
 #include <vector>
 #include <algorithm>
+#include <fstream>
 
 #define TAG "NFS-AndroidStorage"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
@@ -30,6 +31,32 @@ std::filesystem::path AndroidStorage::GetExternalPath() {
 
 std::filesystem::path AndroidStorage::FindGameDataRoot() {
   std::error_code ec;
+
+  // 0. Check if a custom path was configured by the user via TitleActivity
+  const std::filesystem::path config_files[] = {
+      external_path_ / "selected_game_path.txt",
+      internal_path_ / "selected_game_path.txt"
+  };
+
+  for (const auto& cfg : config_files) {
+    if (std::filesystem::is_regular_file(cfg, ec)) {
+      std::ifstream f(cfg);
+      std::string line;
+      if (std::getline(f, line)) {
+        while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' ')) {
+          line.pop_back();
+        }
+        if (!line.empty()) {
+          std::filesystem::path chosen_path(line);
+          if (std::filesystem::exists(chosen_path, ec)) {
+            LOGI("Found user-selected game data path: %s", chosen_path.c_str());
+            return chosen_path;
+          }
+        }
+      }
+    }
+  }
+
   std::vector<std::filesystem::path> search_dirs = {
       external_path_,
       internal_path_,

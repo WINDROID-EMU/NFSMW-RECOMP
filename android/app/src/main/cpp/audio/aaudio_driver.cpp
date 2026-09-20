@@ -1,9 +1,9 @@
 #include "aaudio_driver.h"
+#include <rex/system/xmemory.h>
 #include <android/log.h>
 #include <cstring>
+#include <cmath>
 #include <algorithm>
-#include <rex/audio/conversion.h>
-#include <rex/audio/downmix.h>
 
 #define TAG "NFS-AAudio"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
@@ -19,7 +19,7 @@ constexpr uint32_t kOutputChannels = 2; // Stereo
 
 AndroidAAudioDriver::AndroidAAudioDriver(memory::Memory* memory, rex::thread::Semaphore* semaphore)
     : AudioDriver(memory), semaphore_(semaphore) {
-  ring_buffer_.assign(kRingBufferCapacityFrames * kOutputChannels, 0.0f);
+  ring_buffer_.resize(kRingBufferCapacityFrames * kOutputChannels, 0.0f);
   LOGI("AndroidAAudioDriver constructed");
 }
 
@@ -61,30 +61,20 @@ bool AndroidAAudioDriver::Initialize() {
     return false;
   }
 
-  {
-    std::lock_guard<std::mutex> lock(buffer_mutex_);
-    read_pos_ = 0;
-    write_pos_ = 0;
-    available_frames_ = 0;
-    consumed_samples_acc_ = 0;
-    std::fill(ring_buffer_.begin(), ring_buffer_.end(), 0.0f);
-  }
-
   is_running_.store(true, std::memory_order_release);
   LOGI("AAudio stream started successfully: 48kHz Stereo Float, BufferSize=%d",
        AAudioStream_getBufferSizeInFrames(stream_));
-
-  // Prime the audio system with 2 initial frames to get generation rolling
-  if (semaphore_) {
-    semaphore_->Release(2, nullptr);
-  }
-
   return true;
 }
 
 void AndroidAAudioDriver::Shutdown() {
   if (!is_running_.exchange(false, std::memory_order_acq_rel)) {
     return;
+  }
+
+  // Wake up any threads waiting on audio semaphore
+  if (semaphore_) {
+    semaphore_->Release(16, nullptr);
   }
 
   if (stream_) {
@@ -94,48 +84,94 @@ void AndroidAAudioDriver::Shutdown() {
   }
 }
 
+static inline float LoadBEFloat(uint32_t raw_be) {
+  uint32_t le = __builtin_bswap32(raw_be);
+  float f;
+  std::memcpy(&f, &le, sizeof(float));
+  return f;
+}
+
 void AndroidAAudioDriver::SubmitFrame(uint32_t samples_ptr) {
-  static uint32_t submit_count = 0;
-  if ((++submit_count % 100) == 1) {
-    LOGI("SubmitFrame called: count=%u samples_ptr=0x%08X", submit_count, samples_ptr);
-  }
-
   if (!is_running_.load(std::memory_order_relaxed)) {
-    if (semaphore_) semaphore_->Release(1, nullptr);
     return;
   }
 
-  uint8_t* frame_data = TranslatePhysical(samples_ptr);
+  // Xbox 360 audio frame buffer is allocated in guest virtual memory (heap).
+  uint8_t* frame_data = nullptr;
+  if (memory_) {
+    frame_data = memory_->TranslateVirtual<uint8_t*>(samples_ptr);
+    if (!frame_data) {
+      frame_data = TranslatePhysical(samples_ptr);
+    }
+  }
+
   if (!frame_data) {
-    if (semaphore_) semaphore_->Release(1, nullptr);
+    LOGW("SubmitFrame: null frame_data for samples_ptr=0x%08X", samples_ptr);
     return;
   }
 
-  // Convert guest 5.1 big-endian planar float samples to host stereo interleaved little-endian float samples
+  // Xbox 360 audio frame is PLANAR, 6 channels of 256 samples each (6144 bytes).
+  // Channel layout: 0=FL, 1=FR, 2=C, 3=LFE, 4=BL, 5=BR
+  // All float samples are stored in Big-Endian byte order.
+  constexpr size_t kChannelStride = 256;
+  const uint32_t* raw_src = reinterpret_cast<const uint32_t*>(frame_data);
+
+  const uint32_t* ch_fl  = raw_src + 0 * kChannelStride;
+  const uint32_t* ch_fr  = raw_src + 1 * kChannelStride;
+  const uint32_t* ch_c   = raw_src + 2 * kChannelStride;
+  const uint32_t* ch_lfe = raw_src + 3 * kChannelStride;
+  const uint32_t* ch_bl  = raw_src + 4 * kChannelStride;
+  const uint32_t* ch_br  = raw_src + 5 * kChannelStride;
+
+  constexpr float kCenterGain = 0.7071f;
+  constexpr float kSurroundGain = 0.7071f;
+  constexpr float kLfeGain = 0.5f;
+
   float stereo_temp[kSamplesPerChannel * kOutputChannels];
-  rex::audio::conversion::sequential_6_BE_to_interleaved_2_LE(
-      stereo_temp,
-      reinterpret_cast<const float*>(frame_data),
-      kSamplesPerChannel,
-      rex::audio::GetStereoFold(),
-      rex::audio::GetOutputGain()
-  );
+  float max_val = 0.0f;
+
+  for (size_t i = 0; i < kSamplesPerChannel; ++i) {
+    const float fl  = LoadBEFloat(ch_fl[i]);
+    const float fr  = LoadBEFloat(ch_fr[i]);
+    const float c   = LoadBEFloat(ch_c[i]);
+    const float lfe = LoadBEFloat(ch_lfe[i]);
+    const float bl  = LoadBEFloat(ch_bl[i]);
+    const float br  = LoadBEFloat(ch_br[i]);
+
+    float left  = fl + (c * kCenterGain) + (bl * kSurroundGain) + (lfe * kLfeGain);
+    float right = fr + (c * kCenterGain) + (br * kSurroundGain) + (lfe * kLfeGain);
+
+    left  = std::clamp(left, -1.0f, 1.0f);
+    right = std::clamp(right, -1.0f, 1.0f);
+
+    stereo_temp[i * 2 + 0] = left;
+    stereo_temp[i * 2 + 1] = right;
+
+    max_val = std::max(max_val, std::max(std::abs(left), std::abs(right)));
+  }
 
   // Push into ring buffer
   {
     std::lock_guard<std::mutex> lock(buffer_mutex_);
-    // If buffer would overflow, drop oldest frame to maintain synchronization
-    if (available_frames_ + kSamplesPerChannel > kRingBufferCapacityFrames) {
-      read_pos_ = (read_pos_ + kSamplesPerChannel * kOutputChannels) % ring_buffer_.size();
-      available_frames_ -= kSamplesPerChannel;
-    }
-
     for (size_t i = 0; i < kSamplesPerChannel * kOutputChannels; ++i) {
+      size_t next_write = (write_pos_ + 1) % ring_buffer_.size();
+      if (next_write == read_pos_) {
+        // Buffer full: drop oldest 2 samples (1 stereo frame) to keep latency low
+        read_pos_ = (read_pos_ + 2) % ring_buffer_.size();
+      }
       ring_buffer_[write_pos_] = stereo_temp[i];
-      write_pos_ = (write_pos_ + 1) % ring_buffer_.size();
+      write_pos_ = next_write;
     }
-    available_frames_ += kSamplesPerChannel;
   }
+
+  static int s_frame_cnt = 0;
+  if (++s_frame_cnt % 300 == 1 || (max_val > 0.05f && s_frame_cnt % 60 == 1)) {
+    LOGI("SubmitFrame #%d: max_sample=%.4f (L=%.3f, R=%.3f)",
+         s_frame_cnt, max_val, stereo_temp[0], stereo_temp[1]);
+  }
+
+  // Flow control: Semaphore is NOT released here!
+  // It is released in AudioCallback as frames are actually consumed by the audio hardware.
 }
 
 aaudio_data_callback_result_t AndroidAAudioDriver::AudioCallback(
@@ -145,40 +181,32 @@ aaudio_data_callback_result_t AndroidAAudioDriver::AudioCallback(
     int32_t numFrames) {
   auto* self = static_cast<AndroidAAudioDriver*>(userData);
   float* out = static_cast<float*>(audioData);
-  size_t frames_needed = static_cast<size_t>(numFrames);
-  size_t frames_to_read = 0;
 
-  static uint32_t callback_count = 0;
-  if ((++callback_count % 100) == 1) {
-    LOGI("AudioCallback: count=%u numFrames=%d available_frames=%zu",
-         callback_count, numFrames, self->available_frames_);
-  }
-
+  size_t frames_read = 0;
   {
     std::lock_guard<std::mutex> lock(self->buffer_mutex_);
-    frames_to_read = std::min(frames_needed, self->available_frames_);
-
-    for (size_t f = 0; f < frames_to_read; ++f) {
-      out[f * kOutputChannels + 0] = self->ring_buffer_[self->read_pos_];
-      self->read_pos_ = (self->read_pos_ + 1) % self->ring_buffer_.size();
-      out[f * kOutputChannels + 1] = self->ring_buffer_[self->read_pos_];
-      self->read_pos_ = (self->read_pos_ + 1) % self->ring_buffer_.size();
-    }
-    self->available_frames_ -= frames_to_read;
-
-    // Fill underrun with silence
-    for (size_t f = frames_to_read; f < frames_needed; ++f) {
-      out[f * kOutputChannels + 0] = 0.0f;
-      out[f * kOutputChannels + 1] = 0.0f;
-    }
-
-    // Every time we consume 256 samples (1 guest frame), release 1 semaphore token
-    self->consumed_samples_acc_ += frames_to_read;
-    while (self->consumed_samples_acc_ >= kSamplesPerChannel) {
-      self->consumed_samples_acc_ -= kSamplesPerChannel;
-      if (self->semaphore_) {
-        self->semaphore_->Release(1, nullptr);
+    for (int32_t f = 0; f < numFrames; ++f) {
+      if (self->read_pos_ != self->write_pos_) {
+        out[f * 2 + 0] = self->ring_buffer_[self->read_pos_];
+        self->read_pos_ = (self->read_pos_ + 1) % self->ring_buffer_.size();
+        out[f * 2 + 1] = self->ring_buffer_[self->read_pos_];
+        self->read_pos_ = (self->read_pos_ + 1) % self->ring_buffer_.size();
+        frames_read++;
+      } else {
+        out[f * 2 + 0] = 0.0f;
+        out[f * 2 + 1] = 0.0f;
       }
+    }
+  }
+
+  // Flow control: Release 1 permit on semaphore for every 256 frames consumed by the audio DAC.
+  // This throttles the guest audio worker thread to exactly 48kHz (187.5 frames/second).
+  if (self->semaphore_ && frames_read > 0) {
+    self->consumed_frames_ += frames_read;
+    int release_count = static_cast<int>(self->consumed_frames_ / kSamplesPerChannel);
+    if (release_count > 0) {
+      self->consumed_frames_ %= kSamplesPerChannel;
+      self->semaphore_->Release(release_count, nullptr);
     }
   }
 

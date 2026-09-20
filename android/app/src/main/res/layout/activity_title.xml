@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/title_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/nfsmw_black"
+    android:keepScreenOn="true">
+
+    <!-- Layer 1: Ambient Background preenchendo 100% da tela em qualquer proporção (centerCrop) -->
+    <ImageView
+        android:id="@+id/bg_ambient"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/title_bg"
+        android:alpha="0.85"
+        android:contentDescription="@null" />
+
+    <!-- Layer 2: Vinheta cinematográfica suave nas bordas -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/ambient_vignette" />
+
+    <!-- Layer 3: Enquadramento Principal 100% nítido e com proporção original preservada (fitCenter) -->
+    <ImageView
+        android:id="@+id/bg_main"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:src="@drawable/title_bg"
+        android:contentDescription="@string/app_name" />
+
+    <!-- Layer 4: Interface interativa sobreposta -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="20dp">
+
+        <!-- Barra Superior: Status do Sistema e Botão de Seleção de ROM -->
+        <LinearLayout
+            android:id="@+id/top_control_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_system_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rom_status_bg"
+                android:text="ONLINE • RECOMP ARM64"
+                android:textColor="#E0E0E0"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- Contêiner do Botão de Seleção e Status da ROM -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="end|center_vertical"
+                android:orientation="vertical">
+
+                <Button
+                    android:id="@+id/btn_select_rom"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:background="@drawable/rom_button_bg"
+                    android:text="@string/btn_select_rom"
+                    android:textColor="@color/nfsmw_amber"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:elevation="4dp" />
+
+                <TextView
+                    android:id="@+id/tv_rom_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/rom_status_bg"
+                    android:text="@string/status_no_rom"
+                    android:textColor="@color/nfsmw_orange"
+                    android:textSize="10sp"
+                    android:letterSpacing="0.03" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Prompt de Início Pulsante -->
+        <LinearLayout
+            android:id="@+id/start_prompt_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/start_button_bg"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_press_start"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/title_press_start"
+                android:textColor="@color/nfsmw_amber"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:shadowColor="#FF000000"
+                android:shadowDx="2"
+                android:shadowDy="2"
+                android:shadowRadius="4" />
+        </LinearLayout>
+
+        <!-- Selo de Versão no Canto Inferior Direito -->
+        <TextView
+            android:id="@+id/tv_version_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginBottom="6dp"
+            android:text="@string/title_version"
+            android:textColor="#99FFFFFF"
+            android:textSize="10sp"
+            android:letterSpacing="0.05"
+            android:shadowColor="#FF000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+
+    </RelativeLayout>
+
+    <!-- Overlay de Transição (fade ao iniciar) -->
+    <View
+        android:id="@+id/fade_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/nfsmw_black"
+        android:alpha="0"
+        android:visibility="gone" />
+
+</FrameLayout>

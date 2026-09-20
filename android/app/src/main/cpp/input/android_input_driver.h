@@ -26,6 +26,10 @@ class AndroidInputDriver final : public InputDriver {
   void SetScreenDimensions(uint32_t width, uint32_t height);
 
   static AndroidInputDriver* GetActiveDriver();
+  TouchOverlay& touch_overlay() { return touch_overlay_; }
+  const TouchOverlay& touch_overlay() const { return touch_overlay_; }
+
+  void SetVirtualControlsState(uint16_t buttons, float lx, float ly, float lt, float rt);
 
  private:
   std::mutex state_mutex_;
@@ -33,10 +37,17 @@ class AndroidInputDriver final : public InputDriver {
   X_INPUT_GAMEPAD gamepad_state_{};
   TouchOverlay touch_overlay_;
 
+  // Virtual controls from Java VirtualControlsView
+  uint16_t virtual_buttons_ = 0;
+  float virtual_lx_ = 0.0f;
+  float virtual_ly_ = 0.0f;
+  float virtual_lt_ = 0.0f;
+  float virtual_rt_ = 0.0f;
+
   // Handles physical gamepad motion events (analog sticks & triggers)
   void HandleGamepadMotionEvent(const AInputEvent* event);
   // Handles physical gamepad key events (face buttons, d-pad, shoulders)
-  bool HandleGamepadKeyEvent(const AInputEvent* event);
+  void HandleGamepadKeyEvent(const AInputEvent* event);
   // Handles touch events
   void HandleTouchEvent(const AInputEvent* event);
 };
@@ -52,5 +63,7 @@ class AndroidInputSystem final : public InputSystem {
  private:
   AndroidInputDriver* driver_ = nullptr;
 };
+
+void RegisterVirtualGamepadJNI(void* java_vm, void* activity_obj);
 
 }  // namespace rex::input::android
