@@ -573,18 +573,18 @@ void NfsmwMenuDialog::OnDraw(ImGuiIO& io) {
 //  Helpers de dibujo (deben verse llamados dentro de OnDraw).
 // ---------------------------------------------------------------------------
 void NfsmwMenuDialog::MarcaVivo(const char* texto) {
-  ImGui::TextColored(ImColor(kVivo), texto);
+  ImGui::TextColored(ImColor(kVivo), "%s", texto);
   ImGui::Spacing();
 }
 
 void NfsmwMenuDialog::MarcaReinicio(const char* texto) {
-  ImGui::TextColored(ImColor(kAviso), (texto && *texto) ? texto : "(se aplica al reiniciar)");
+  ImGui::TextColored(ImColor(kAviso), "%s", (texto && *texto) ? texto : "(se aplica al reiniciar)");
   ImGui::Spacing();
 }
 
 void NfsmwMenuDialog::MarcaReinicioConAviso(const char* texto) {
   ImGui::TextColored(ImColor(kAviso), "Reinicia para que tenga efecto.");
-  ImGui::TextColored(ImColor(kTextoAtenuado), texto);
+  ImGui::TextColored(ImColor(kTextoAtenuado), "%s", texto);
   ImGui::Spacing();
 }
 

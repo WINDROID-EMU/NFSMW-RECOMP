@@ -78,3 +78,12 @@ __pycache__/
 # Los parches actuales aplican y revierten por texto y no dejan .original, pero
 # algunos del SDK todavia los generan.
 *.original
+
+# --- Android & Game Assets ---------------------------------------------------
+game_root/
+android/app/build/
+android/app/.cxx/
+android/.gradle/
+android/local.properties
+*.apk
+*.aab
