@@ -81,6 +81,8 @@ __pycache__/
 
 # --- Android & Game Assets ---------------------------------------------------
 game_root/
+rexglue-sdk/
+android/rexglue-sdk/
 android/app/build/
 android/app/.cxx/
 android/.gradle/
