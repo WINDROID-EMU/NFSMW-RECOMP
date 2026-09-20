@@ -43,6 +43,8 @@ class AndroidAAudioDriver final : public AudioDriver {
   std::vector<float> ring_buffer_;
   size_t read_pos_ = 0;
   size_t write_pos_ = 0;
+  size_t available_frames_ = 0;
+  size_t consumed_samples_acc_ = 0;
   std::mutex buffer_mutex_;
 };
 

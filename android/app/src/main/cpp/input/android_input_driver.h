@@ -25,6 +25,8 @@ class AndroidInputDriver final : public InputDriver {
   bool HandleInputEvent(const AInputEvent* event);
   void SetScreenDimensions(uint32_t width, uint32_t height);
 
+  static AndroidInputDriver* GetActiveDriver();
+
  private:
   std::mutex state_mutex_;
   uint32_t packet_number_ = 0;
@@ -34,7 +36,7 @@ class AndroidInputDriver final : public InputDriver {
   // Handles physical gamepad motion events (analog sticks & triggers)
   void HandleGamepadMotionEvent(const AInputEvent* event);
   // Handles physical gamepad key events (face buttons, d-pad, shoulders)
-  void HandleGamepadKeyEvent(const AInputEvent* event);
+  bool HandleGamepadKeyEvent(const AInputEvent* event);
   // Handles touch events
   void HandleTouchEvent(const AInputEvent* event);
 };

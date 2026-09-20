@@ -1,4 +1,5 @@
 #include "android_input_driver.h"
+#include <rex/input/device_assignment.h>
 #include <android/log.h>
 #include <android/keycodes.h>
 #include <cmath>
@@ -24,6 +25,10 @@ AndroidInputDriver::~AndroidInputDriver() {
   LOGI("AndroidInputDriver destroyed");
 }
 
+AndroidInputDriver* AndroidInputDriver::GetActiveDriver() {
+  return g_active_input_driver;
+}
+
 X_STATUS AndroidInputDriver::Setup() {
   return X_STATUS_SUCCESS;
 }
@@ -41,7 +46,7 @@ void AndroidInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
 }
 
 X_RESULT AndroidInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
-  if (!out_state || id != kDefaultDeviceId) {
+  if (!out_state || id == DeviceId::kInvalid) {
     return X_ERROR_DEVICE_NOT_CONNECTED;
   }
 
@@ -55,13 +60,22 @@ X_RESULT AndroidInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_stat
   out_state->packet_number = ++packet_number_;
   out_state->gamepad = state;
 
+  static uint32_t poll_count = 0;
+  if ((++poll_count % 300) == 1) {
+    LOGI("GetDeviceState: id=%lu, poll=%u, buttons=0x%04X, lx=%d, ly=%d",
+         static_cast<unsigned long>(id), poll_count, static_cast<uint16_t>(state.buttons),
+         static_cast<int16_t>(state.thumb_lx), static_cast<int16_t>(state.thumb_ly));
+  }
+
   return X_ERROR_SUCCESS;
 }
 
 X_RESULT AndroidInputDriver::GetDeviceCapabilities(DeviceId id, uint32_t flags, X_INPUT_CAPABILITIES* out_caps) {
-  if (!out_caps || id != kDefaultDeviceId) {
+  if (!out_caps || id == DeviceId::kInvalid) {
     return X_ERROR_DEVICE_NOT_CONNECTED;
   }
+
+  LOGI("GetDeviceCapabilities called for id=%lu", static_cast<unsigned long>(id));
 
   std::memset(out_caps, 0, sizeof(X_INPUT_CAPABILITIES));
   out_caps->type = XINPUT_DEVTYPE_GAMEPAD;
@@ -72,7 +86,6 @@ X_RESULT AndroidInputDriver::GetDeviceCapabilities(DeviceId id, uint32_t flags, 
 }
 
 X_RESULT AndroidInputDriver::SetDeviceVibration(DeviceId id, X_INPUT_VIBRATION* vibration) {
-  // Can trigger Android device haptics/vibrator service here if desired
   return X_ERROR_SUCCESS;
 }
 
@@ -90,15 +103,17 @@ bool AndroidInputDriver::HandleInputEvent(const AInputEvent* event) {
   int32_t source = AInputEvent_getSource(event);
 
   if (event_type == AINPUT_EVENT_TYPE_KEY) {
-    if ((source & AINPUT_SOURCE_GAMEPAD) || (source & AINPUT_SOURCE_JOYSTICK)) {
-      HandleGamepadKeyEvent(event);
+    int32_t key_code = AKeyEvent_getKeyCode(event);
+    int32_t action = AKeyEvent_getAction(event);
+    LOGI("Controller Key Event: keycode=%d, action=%d, source=0x%04X", key_code, action, source);
+    if (HandleGamepadKeyEvent(event)) {
       return true;
     }
   } else if (event_type == AINPUT_EVENT_TYPE_MOTION) {
-    if ((source & AINPUT_SOURCE_GAMEPAD) || (source & AINPUT_SOURCE_JOYSTICK)) {
+    if ((source & (AINPUT_SOURCE_GAMEPAD | AINPUT_SOURCE_JOYSTICK)) != 0) {
       HandleGamepadMotionEvent(event);
       return true;
-    } else if (source & AINPUT_SOURCE_TOUCHSCREEN) {
+    } else if ((source & AINPUT_SOURCE_TOUCHSCREEN) == AINPUT_SOURCE_TOUCHSCREEN) {
       HandleTouchEvent(event);
       return true;
     }
@@ -107,7 +122,7 @@ bool AndroidInputDriver::HandleInputEvent(const AInputEvent* event) {
   return false;
 }
 
-void AndroidInputDriver::HandleGamepadKeyEvent(const AInputEvent* event) {
+bool AndroidInputDriver::HandleGamepadKeyEvent(const AInputEvent* event) {
   int32_t action = AKeyEvent_getAction(event);
   int32_t key_code = AKeyEvent_getKeyCode(event);
   bool is_down = (action == AKEY_EVENT_ACTION_DOWN);
@@ -116,52 +131,113 @@ void AndroidInputDriver::HandleGamepadKeyEvent(const AInputEvent* event) {
   uint16_t mask = 0;
 
   switch (key_code) {
-    case AKEYCODE_BUTTON_A:       mask = X_INPUT_GAMEPAD_A; break;
-    case AKEYCODE_BUTTON_B:       mask = X_INPUT_GAMEPAD_B; break;
-    case AKEYCODE_BUTTON_X:       mask = X_INPUT_GAMEPAD_X; break;
-    case AKEYCODE_BUTTON_Y:       mask = X_INPUT_GAMEPAD_Y; break;
-    case AKEYCODE_BUTTON_L1:      mask = X_INPUT_GAMEPAD_LEFT_SHOULDER; break;
-    case AKEYCODE_BUTTON_R1:      mask = X_INPUT_GAMEPAD_RIGHT_SHOULDER; break;
-    case AKEYCODE_BUTTON_THUMBL:  mask = X_INPUT_GAMEPAD_LEFT_THUMB; break;
-    case AKEYCODE_BUTTON_THUMBR:  mask = X_INPUT_GAMEPAD_RIGHT_THUMB; break;
-    case AKEYCODE_BUTTON_START:   mask = X_INPUT_GAMEPAD_START; break;
-    case AKEYCODE_BUTTON_SELECT:  mask = X_INPUT_GAMEPAD_BACK; break;
-    case AKEYCODE_DPAD_UP:        mask = X_INPUT_GAMEPAD_DPAD_UP; break;
-    case AKEYCODE_DPAD_DOWN:      mask = X_INPUT_GAMEPAD_DPAD_DOWN; break;
-    case AKEYCODE_DPAD_LEFT:      mask = X_INPUT_GAMEPAD_DPAD_LEFT; break;
-    case AKEYCODE_DPAD_RIGHT:     mask = X_INPUT_GAMEPAD_DPAD_RIGHT; break;
-    default: break;
+    // Face buttons
+    case AKEYCODE_BUTTON_A:
+    case AKEYCODE_DPAD_CENTER:
+      mask = X_INPUT_GAMEPAD_A;
+      break;
+    case AKEYCODE_BUTTON_B:
+      mask = X_INPUT_GAMEPAD_B;
+      break;
+    case AKEYCODE_BUTTON_X:
+      mask = X_INPUT_GAMEPAD_X;
+      break;
+    case AKEYCODE_BUTTON_Y:
+      mask = X_INPUT_GAMEPAD_Y;
+      break;
+
+    // Bumpers / Shoulders
+    case AKEYCODE_BUTTON_L1:
+      mask = X_INPUT_GAMEPAD_LEFT_SHOULDER;
+      break;
+    case AKEYCODE_BUTTON_R1:
+      mask = X_INPUT_GAMEPAD_RIGHT_SHOULDER;
+      break;
+
+    // Digital Triggers
+    case AKEYCODE_BUTTON_L2:
+      gamepad_state_.left_trigger = is_down ? 255 : 0;
+      return true;
+    case AKEYCODE_BUTTON_R2:
+      gamepad_state_.right_trigger = is_down ? 255 : 0;
+      return true;
+
+    // Thumbstick clicks
+    case AKEYCODE_BUTTON_THUMBL:
+      mask = X_INPUT_GAMEPAD_LEFT_THUMB;
+      break;
+    case AKEYCODE_BUTTON_THUMBR:
+      mask = X_INPUT_GAMEPAD_RIGHT_THUMB;
+      break;
+
+    // Start / Menu
+    case AKEYCODE_BUTTON_START:
+    case AKEYCODE_MENU:
+    case AKEYCODE_ENTER:
+      mask = X_INPUT_GAMEPAD_START;
+      break;
+
+    // Select / Back
+    case AKEYCODE_BUTTON_SELECT:
+    case AKEYCODE_BACK:
+    case AKEYCODE_ESCAPE:
+      mask = X_INPUT_GAMEPAD_BACK;
+      break;
+
+    // D-Pad buttons
+    case AKEYCODE_DPAD_UP:
+      mask = X_INPUT_GAMEPAD_DPAD_UP;
+      break;
+    case AKEYCODE_DPAD_DOWN:
+      mask = X_INPUT_GAMEPAD_DPAD_DOWN;
+      break;
+    case AKEYCODE_DPAD_LEFT:
+      mask = X_INPUT_GAMEPAD_DPAD_LEFT;
+      break;
+    case AKEYCODE_DPAD_RIGHT:
+      mask = X_INPUT_GAMEPAD_DPAD_RIGHT;
+      break;
+
+    default:
+      return false;
   }
 
   if (mask != 0) {
-    uint16_t buttons = gamepad_state_.buttons;
+    uint16_t b = gamepad_state_.buttons;
     if (is_down) {
-      buttons |= mask;
+      b |= mask;
     } else {
-      buttons &= ~mask;
+      b &= ~mask;
     }
-    gamepad_state_.buttons = buttons;
+    gamepad_state_.buttons = b;
+    return true;
   }
+
+  return false;
 }
 
 void AndroidInputDriver::HandleGamepadMotionEvent(const AInputEvent* event) {
   std::lock_guard<std::mutex> lock(state_mutex_);
 
-  // Left stick
+  // Left stick (X, Y)
   float lx = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_X, 0);
   float ly = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_Y, 0);
 
-  // Right stick
+  // Right stick (Z, RZ or RX, RY)
   float rx = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_Z, 0);
   float ry = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_RZ, 0);
+  if (rx == 0.0f && ry == 0.0f) {
+    rx = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_RX, 0);
+    ry = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_RY, 0);
+  }
 
-  // Triggers
+  // Triggers (LTRIGGER / BRAKE and RTRIGGER / GAS)
   float lt = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_LTRIGGER, 0);
-  if (lt == 0.0f) {
+  if (lt <= 0.0f) {
     lt = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_BRAKE, 0);
   }
   float rt = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_RTRIGGER, 0);
-  if (rt == 0.0f) {
+  if (rt <= 0.0f) {
     rt = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_GAS, 0);
   }
 
@@ -169,22 +245,48 @@ void AndroidInputDriver::HandleGamepadMotionEvent(const AInputEvent* event) {
   float hat_x = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_HAT_X, 0);
   float hat_y = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_HAT_Y, 0);
 
-  uint16_t buttons = gamepad_state_.buttons;
-  buttons &= ~(X_INPUT_GAMEPAD_DPAD_LEFT | X_INPUT_GAMEPAD_DPAD_RIGHT |
-               X_INPUT_GAMEPAD_DPAD_UP | X_INPUT_GAMEPAD_DPAD_DOWN);
+  // Apply deadzone to analog sticks (12%)
+  auto apply_deadzone = [](float val) -> float {
+    constexpr float kDeadzone = 0.12f;
+    if (std::abs(val) < kDeadzone) return 0.0f;
+    return val;
+  };
 
-  if (hat_x < -0.5f) buttons |= X_INPUT_GAMEPAD_DPAD_LEFT;
-  if (hat_x > 0.5f)  buttons |= X_INPUT_GAMEPAD_DPAD_RIGHT;
-  if (hat_y < -0.5f) buttons |= X_INPUT_GAMEPAD_DPAD_UP;
-  if (hat_y > 0.5f)  buttons |= X_INPUT_GAMEPAD_DPAD_DOWN;
+  lx = apply_deadzone(lx);
+  ly = apply_deadzone(ly);
+  rx = apply_deadzone(rx);
+  ry = apply_deadzone(ry);
 
-  gamepad_state_.buttons = buttons;
   gamepad_state_.thumb_lx = static_cast<int16_t>(std::clamp(lx, -1.0f, 1.0f) * 32767.0f);
   gamepad_state_.thumb_ly = static_cast<int16_t>(std::clamp(-ly, -1.0f, 1.0f) * 32767.0f); // Invert Y
   gamepad_state_.thumb_rx = static_cast<int16_t>(std::clamp(rx, -1.0f, 1.0f) * 32767.0f);
   gamepad_state_.thumb_ry = static_cast<int16_t>(std::clamp(-ry, -1.0f, 1.0f) * 32767.0f); // Invert Y
-  gamepad_state_.left_trigger = static_cast<uint8_t>(std::clamp(lt, 0.0f, 1.0f) * 255.0f);
-  gamepad_state_.right_trigger = static_cast<uint8_t>(std::clamp(rt, 0.0f, 1.0f) * 255.0f);
+
+  if (lt > 0.0f) {
+    gamepad_state_.left_trigger = static_cast<uint8_t>(std::clamp(lt, 0.0f, 1.0f) * 255.0f);
+  }
+  if (rt > 0.0f) {
+    gamepad_state_.right_trigger = static_cast<uint8_t>(std::clamp(rt, 0.0f, 1.0f) * 255.0f);
+  }
+
+  // Hat D-Pad buttons
+  uint16_t b = gamepad_state_.buttons;
+  if (hat_x < -0.5f) {
+    b |= X_INPUT_GAMEPAD_DPAD_LEFT;
+    b &= ~X_INPUT_GAMEPAD_DPAD_RIGHT;
+  } else if (hat_x > 0.5f) {
+    b |= X_INPUT_GAMEPAD_DPAD_RIGHT;
+    b &= ~X_INPUT_GAMEPAD_DPAD_LEFT;
+  }
+
+  if (hat_y < -0.5f) {
+    b |= X_INPUT_GAMEPAD_DPAD_UP;
+    b &= ~X_INPUT_GAMEPAD_DPAD_DOWN;
+  } else if (hat_y > 0.5f) {
+    b |= X_INPUT_GAMEPAD_DPAD_DOWN;
+    b &= ~X_INPUT_GAMEPAD_DPAD_UP;
+  }
+  gamepad_state_.buttons = b;
 }
 
 void AndroidInputDriver::HandleTouchEvent(const AInputEvent* event) {
@@ -233,7 +335,8 @@ AndroidInputSystem::AndroidInputSystem(rex::ui::Window* window)
   auto driver = std::make_unique<AndroidInputDriver>(window);
   driver_ = driver.get();
   AddDriver(std::move(driver));
-  LOGI("AndroidInputSystem initialized with native AndroidInputDriver");
+  SetDeviceAssignment(std::make_unique<SlotAssignment>());
+  LOGI("AndroidInputSystem initialized with native AndroidInputDriver and SlotAssignment");
 }
 
 AndroidInputSystem::~AndroidInputSystem() = default;

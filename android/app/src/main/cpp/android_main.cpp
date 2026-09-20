@@ -47,10 +47,11 @@ void OnAppCmd(struct android_app* app, int32_t cmd) {
         if (active_win) {
           active_win->AttachNativeWindow(app->window);
         }
-        if (state->input_driver) {
+        auto* input_drv = rex::input::android::AndroidInputDriver::GetActiveDriver();
+        if (input_drv) {
           int32_t w = ANativeWindow_getWidth(app->window);
           int32_t h = ANativeWindow_getHeight(app->window);
-          state->input_driver->SetScreenDimensions(w, h);
+          input_drv->SetScreenDimensions(w, h);
         }
       }
       break;
@@ -72,16 +73,15 @@ void OnAppCmd(struct android_app* app, int32_t cmd) {
     case APP_CMD_WINDOW_RESIZED:
       LOGI("APP_CMD_WINDOW_RESIZED received");
       if (app->window != nullptr) {
+        int32_t w = ANativeWindow_getWidth(app->window);
+        int32_t h = ANativeWindow_getHeight(app->window);
         auto* active_win = rex::ui::AndroidWindow::GetActiveWindow();
         if (active_win) {
-          int32_t w = ANativeWindow_getWidth(app->window);
-          int32_t h = ANativeWindow_getHeight(app->window);
           active_win->UpdateDimensions(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
         }
-        if (state->input_driver) {
-          int32_t w = ANativeWindow_getWidth(app->window);
-          int32_t h = ANativeWindow_getHeight(app->window);
-          state->input_driver->SetScreenDimensions(w, h);
+        auto* input_drv = rex::input::android::AndroidInputDriver::GetActiveDriver();
+        if (input_drv) {
+          input_drv->SetScreenDimensions(w, h);
         }
       }
       break;
@@ -107,9 +107,9 @@ void OnAppCmd(struct android_app* app, int32_t cmd) {
 }
 
 int32_t OnInputEvent(struct android_app* app, AInputEvent* event) {
-  auto* state = static_cast<AppState*>(app->userData);
-  if (state && state->input_driver) {
-    if (state->input_driver->HandleInputEvent(event)) {
+  auto* input_driver = rex::input::android::AndroidInputDriver::GetActiveDriver();
+  if (input_driver) {
+    if (input_driver->HandleInputEvent(event)) {
       return 1;
     }
   }
@@ -125,6 +125,9 @@ void android_main(struct android_app* state) {
   state->userData = &g_app_state;
   state->onAppCmd = OnAppCmd;
   state->onInputEvent = OnInputEvent;
+
+  // Keep screen on and wake up display if locked/sleeping
+  ANativeActivity_setWindowFlags(state->activity, 0x00000080 | 0x00080000 | 0x00200000, 0);
 
   // Initialize Android system hooks for memory, filesystem and threads
   rex::memory::AndroidInitialize();

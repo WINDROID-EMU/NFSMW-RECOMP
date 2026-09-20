@@ -24,6 +24,9 @@
             android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode"
             android:alwaysRetainTaskState="true"
             android:launchMode="singleInstance"
+            android:turnScreenOn="true"
+            android:showWhenLocked="true"
+            android:keepScreenOn="true"
             android:exported="true">
 
             <!-- Name of the native library without lib prefix or .so extension -->
