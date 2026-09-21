@@ -1,0 +1,140 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Tipo de compilação (debug ou release)'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build Android APK (arm64-v8a)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK & CMake
+        run: |
+          echo "Installing NDK 27.2.12479018 and CMake 3.22.1..."
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.2.12479018" "cmake;3.22.1"
+
+      - name: Verify ReXGlue SDK & Generated Sources
+        run: |
+          echo "=== Verificando dependências do build nativo ==="
+          if [ ! -d "android/rexglue-sdk" ]; then
+            echo "::warning title=ReXGlue SDK::Diretório 'android/rexglue-sdk' não encontrado no repositório. Se a compilação falhar no CMake, certifique-se de que o SDK está disponível ou versionado."
+          else
+            echo "ReXGlue SDK encontrado em android/rexglue-sdk"
+          fi
+          if [ ! -f "app/generated/default/sources.cmake" ]; then
+            echo "::warning title=Generated Sources::'app/generated/default/sources.cmake' não encontrado."
+          else
+            echo "Fontes geradas encontradas em app/generated/default"
+          fi
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: false
+
+      - name: Make Gradlew Executable
+        run: chmod +x android/gradlew
+
+      - name: Determine Build Type
+        id: build_config
+        run: |
+          BUILD_TYPE="debug"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BUILD_TYPE="${{ inputs.build_type }}"
+          fi
+          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
+          if [ "$BUILD_TYPE" = "release" ]; then
+            echo "gradle_task=assembleRelease" >> $GITHUB_OUTPUT
+            echo "apk_path=android/app/build/outputs/apk/release/app-release.apk" >> $GITHUB_OUTPUT
+            echo "apk_name=NFSMW-Android-release.apk" >> $GITHUB_OUTPUT
+          else
+            echo "gradle_task=assembleDebug" >> $GITHUB_OUTPUT
+            echo "apk_path=android/app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_OUTPUT
+            echo "apk_name=NFSMW-Android-debug.apk" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Android APK with Gradle
+        run: |
+          cd android
+          ./gradlew ${{ steps.build_config.outputs.gradle_task }} --stacktrace
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build_config.outputs.apk_name }}
+          path: ${{ steps.build_config.outputs.apk_path }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Prepare APK Release Artifacts
+        id: release_info
+        run: |
+          mkdir -p release-assets
+          cp "${{ steps.build_config.outputs.apk_path }}" "release-assets/${{ steps.build_config.outputs.apk_name }}"
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "title=Need for Speed Most Wanted Android Port ${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+            echo "title=Need for Speed Most Wanted Android Port (Latest Build)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/${{ steps.build_config.outputs.apk_name }}
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: ${{ steps.release_info.outputs.title }}
+          body: |
+            ### 🏎️ Need for Speed: Most Wanted (2005) - Android Recompiled Port
+            
+            - **Commit**: [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            - **Ref**: `${{ github.ref_name }}`
+            - **Build Type**: `${{ steps.build_config.outputs.build_type }}`
+            
+            #### 📦 Arquivos incluídos:
+            - `${{ steps.build_config.outputs.apk_name }}`: APK nativo compilado para `arm64-v8a` (Android 8.0+ / Vulkan / AAudio).
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
