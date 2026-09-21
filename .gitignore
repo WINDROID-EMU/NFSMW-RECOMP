@@ -20,7 +20,8 @@ assets/
 # --- Salida del generador de codigo -----------------------------------------
 # Se deriva del XEX, asi que tampoco se distribuye.
 generated/
-app/generated/
+!app/generated/
+!app/generated/**
 
 # --- Compilacion -------------------------------------------------------------
 out/
@@ -82,7 +83,8 @@ __pycache__/
 # --- Android & Game Assets ---------------------------------------------------
 game_root/
 rexglue-sdk/
-android/rexglue-sdk/
+!android/rexglue-sdk/
+!android/rexglue-sdk/**
 android/app/build/
 android/app/.cxx/
 android/.gradle/
