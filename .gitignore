@@ -91,3 +91,5 @@ android/.gradle/
 android/local.properties
 *.apk
 *.aab
+lib_compat/
+

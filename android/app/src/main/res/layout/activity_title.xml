@@ -36,9 +36,10 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:paddingStart="24dp"
-        android:paddingEnd="24dp"
         android:paddingTop="18dp"
-        android:paddingBottom="20dp">
+        android:paddingEnd="24dp"
+        android:paddingBottom="20dp"
+        android:visibility="visible">
 
         <!-- Barra Superior: Status do Sistema e Botão de Seleção de ROM -->
         <LinearLayout
@@ -48,17 +49,6 @@
             android:layout_alignParentTop="true"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/tv_system_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/rom_status_bg"
-                android:text="ONLINE • RECOMP ARM64"
-                android:textColor="#E0E0E0"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.08" />
 
             <View
                 android:layout_width="0dp"
@@ -77,12 +67,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="38dp"
                     android:background="@drawable/rom_button_bg"
+                    android:elevation="4dp"
+                    android:letterSpacing="0.05"
                     android:text="@string/btn_select_rom"
                     android:textColor="@color/nfsmw_amber"
                     android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.05"
-                    android:elevation="4dp" />
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tv_rom_status"
@@ -90,10 +80,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:background="@drawable/rom_status_bg"
+                    android:letterSpacing="0.03"
                     android:text="@string/status_no_rom"
                     android:textColor="@color/nfsmw_orange"
-                    android:textSize="10sp"
-                    android:letterSpacing="0.03" />
+                    android:textSize="10sp" />
             </LinearLayout>
         </LinearLayout>
 
@@ -105,7 +95,6 @@
             android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true"
             android:layout_marginBottom="12dp"
-            android:background="@drawable/start_button_bg"
             android:gravity="center"
             android:orientation="horizontal">
 
@@ -113,15 +102,16 @@
                 android:id="@+id/tv_press_start"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/title_press_start"
-                android:textColor="@color/nfsmw_amber"
-                android:textSize="16sp"
-                android:textStyle="bold"
                 android:letterSpacing="0.08"
                 android:shadowColor="#FF000000"
                 android:shadowDx="2"
                 android:shadowDy="2"
-                android:shadowRadius="4" />
+                android:shadowRadius="4"
+                android:text="@string/title_press_start"
+                android:textAppearance="@android:style/TextAppearance.Material.Display1"
+                android:textColor="@color/nfsmw_amber"
+                android:textSize="16sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Selo de Versão no Canto Inferior Direito -->
@@ -129,17 +119,33 @@
             android:id="@+id/tv_version_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
             android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
             android:layout_marginBottom="6dp"
-            android:text="@string/title_version"
-            android:textColor="#99FFFFFF"
-            android:textSize="10sp"
             android:letterSpacing="0.05"
             android:shadowColor="#FF000000"
             android:shadowDx="1"
             android:shadowDy="1"
-            android:shadowRadius="2" />
+            android:shadowRadius="2"
+            android:text="@string/title_version"
+            android:textColor="#99FFFFFF"
+            android:textSize="10sp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btn_settings"
+            style="@android:style/Widget.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:elevation="4dp"
+            android:letterSpacing="0.05"
+            android:text="⚙"
+            android:textColor="@color/nfsmw_black"
+            android:textColorHighlight="#00FFFFFF"
+            android:textColorHint="#00FFFFFF"
+            android:textColorLink="#00FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
     </RelativeLayout>
 

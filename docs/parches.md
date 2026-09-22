@@ -134,6 +134,16 @@ Abre la puerta del menú y nada más. Lo que hay detrás no funciona; ver
 Instrumentación general que se quedó porque es barata y útil. Entre otras cosas es lo
 que puso nombre y hora al cuelgue del audio.
 
+### `parche_vulkan_opt.py` — otimizações de GPU na API Vulkan
+
+Melhora expressiva de taxa de quadros e eliminação de engasgos (stuttering) no Vulkan:
+
+- **Desativa o descarte de quadros incompletos**: `vulkan_async_skip_incomplete_frames = false`. No código original, qualquer frame que usasse um pipeline com shader assíncrono em compilação era totalmente descartado da apresentação, gerando quedas de 10-20 FPS por segundo.
+- **Batching de submissão**: `vulkan_submit_on_primary_buffer_end = false`. Evita submissões repetitivas desnecessárias ao queue Vulkan a cada fim de buffer primário.
+- **Caminho EDRAM padrão**: `render_target_path_vulkan = "fbo"` (Host Render Targets, rápido e sem sobrecarga de FSI).
+- **Priorização de GPU dedicada**: pontua `VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU` com +1000 pontos em `vulkan_provider.cpp`, garantindo a escolha da GPU de maior desempenho.
+- **Limitador de FPS suave**: adiciona suporte a `max_fps` no apresentador Vulkan (`vulkan_presenter.cpp`).
+
 ### `tools/diagnostico/parche_xma.py` — instrumentación pesada del XMA
 
 **Fuera del build por defecto.** Traza por segundo del hilo de audio, cada envío y cada

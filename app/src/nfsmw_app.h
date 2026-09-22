@@ -15,6 +15,9 @@
 #endif
 #include <windows.h>
 #include <shellapi.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 
 #include "nfsmw_menu.h"
@@ -564,6 +567,25 @@ class NfsmwApp : public rex::ReXApp {
       }
       REXLOG_ERROR("[menu] no se pudo relanzar el juego (ShellExecuteW = {}); sigue con "
                    "lo aplicado y reinicia a mano.", int32_t(resultado));
+    } else {
+      REXLOG_ERROR("[menu] sin ruta del ejecutable; reinicia el juego a mano.");
+    }
+#elif defined(__linux__)
+    const auto exe = rex::filesystem::GetExecutablePath();
+    if (!exe.empty()) {
+      std::string ruta = exe.string();
+      pid_t pid = fork();
+      if (pid == 0) {
+        char* args[] = {const_cast<char*>(ruta.c_str()), nullptr};
+        execv(ruta.c_str(), args);
+        _exit(1);
+      } else if (pid > 0) {
+        if (window() != nullptr) {
+          window()->RequestClose();
+        }
+        return;
+      }
+      REXLOG_ERROR("[menu] fallo al relanzar el proceso en Linux.");
     } else {
       REXLOG_ERROR("[menu] sin ruta del ejecutable; reinicia el juego a mano.");
     }
