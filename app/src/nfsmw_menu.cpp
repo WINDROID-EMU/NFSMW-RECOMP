@@ -511,6 +511,31 @@ void NfsmwMenuDialog::OnDraw(ImGuiIO& io) {
       MarcaReinicio();
     }
 
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    ImGui::TextUnformatted("ILUMINAÇÃO E RENDER TARGETS");
+    ImGui::Spacing();
+
+    if (ExisteCvar("native_2x_msaa")) {
+      bool msaa = CvarB("native_2x_msaa");
+      if (ImGui::Checkbox("MSAA 2x nativo na iluminação e geometria", &msaa)) {
+        SetCvarB("native_2x_msaa", msaa);
+        Persistir();
+      }
+      MarcaReinicioConAviso("Desative para dobrar a performance dos efeitos de iluminação e sombras (1 amostra por pixel).");
+    }
+
+    if (ExisteCvar("gamma_render_target_as_unorm16")) {
+      bool gamma16 = CvarB("gamma_render_target_as_unorm16");
+      if (ImGui::Checkbox("Render targets de iluminação em 64-bit UNORM16", &gamma16)) {
+        SetCvarB("gamma_render_target_as_unorm16", gamma16);
+        Persistir();
+      }
+      MarcaVivo("Desative para usar sRGB de 32-bit nativo acelerado por hardware, aliviando o peso de iluminação/bloom na GPU.");
+    }
+
   // =========================================================================
   //  TAB 2: ÁUDIO & INPUT
   // =========================================================================

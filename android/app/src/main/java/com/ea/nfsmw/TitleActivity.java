@@ -773,7 +773,9 @@ public class TitleActivity extends Activity {
 
             toml.append("async_shader_compilation = ").append(asyncShaders ? "true" : "false").append("\n");
             toml.append("readback_resolve = \"").append(readback ? "fast" : "none").append("\"\n");
-            toml.append("gpu_3d_to_2d_texture = true\n\n");
+            toml.append("gpu_3d_to_2d_texture = true\n");
+            toml.append("native_2x_msaa = false\n");
+            toml.append("gamma_render_target_as_unorm16 = false\n\n");
 
             toml.append("audio_mute = ").append(mute ? "true" : "false").append("\n");
             toml.append("mnk_mode = ").append(mnk ? "true" : "false").append("\n\n");

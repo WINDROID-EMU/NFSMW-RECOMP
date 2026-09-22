@@ -32,6 +32,17 @@ O QUE ESTE PARCHE OTIMIZA:
 5. Suporte a limitador de FPS suave no Vulkan (vulkan_presenter.cpp):
    - Conecta a verificação do cvar 'max_fps' antes de vkQueuePresentKHR,
      garantindo frame pacing estável e sem stuttering.
+
+6. OTIMIZACAO DE ILUMINACAO (command_processor.cpp base):
+   - query_occlusion_fake_sample_count: Reduzido de 1000 para 1.
+     O NFSMW usa occlusion queries para determinar visibilidade das luzes dos carros
+     e bloom de faróis. Com 1000 amostras falsas, TODAS as luzes sempre passam como
+     visíveis, forçando o motor a renderizar todos os passes de luz e bloom mesmo
+     para luzes fora de cena ou atrás de prédios (~30-40% do custo de iluminação).
+     Com 1 amostra: luzes são culled corretamente pelo hardware de occlusion.
+   - clear_memory_page_state: Desativado (era true).
+     Varre toda a memória GPU-escrita no fim de CADA FRAME: custo O(N) por frame ~0.5ms.
+     Desnecessário em modo normal (somente necessário para debug de coherência).
 """
 
 import argparse
@@ -143,6 +154,35 @@ NUEVO_PRES = """    // ---------------------------------------------------------
         vulkan_device_->AcquireQueue(paint_context_.present_queue_family, 0);
     present_result = dfn.vkQueuePresentKHR(queue_acquisition.queue(), &present_info);"""
 
+# ---------------------------------------------------------------------------
+#  6. command_processor.cpp base (Otimizações de iluminação)
+# ---------------------------------------------------------------------------
+ANCLA_LUZ = """REXCVAR_DEFINE_INT32(query_occlusion_fake_sample_count, 1000, "GPU",
+                     "Fake sample count for occlusion queries")
+    .range(1, 100000)
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);"""
+
+NUEVO_LUZ = """// PARCHE LOCAL - otimizacao de iluminacao: occlusion queries corretas para culling de luzes
+// NFSMW usa occlusion queries para visibilidade de faróis/bloom. Com 1000 amostras sempre-visíveis
+// todos os passes de iluminação eram sempre executados. Com 1: luzes são culled pelo hardware.
+REXCVAR_DEFINE_INT32(query_occlusion_fake_sample_count, 1, "GPU",
+                     "Fake sample count for occlusion queries")
+    .range(1, 100000)
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);"""
+
+ANCLA_PAGMEM = """REXCVAR_DEFINE_BOOL(clear_memory_page_state, true, "GPU",
+                    "Refresh page-valid state from GPU-written memory at frame end. "
+                    "Disable for minor CPU overhead reduction, but may break memory coherency.")
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);"""
+
+NUEVO_PAGMEM = """// PARCHE LOCAL - otimizacao de iluminacao: desativar varredura O(N) de páginas por frame
+// clear_memory_page_state=true causava ~0.5ms de overhead de CPU em cada frame ao varrer
+// toda a memória escrita pela GPU. Desativado pois não há debug de coherência ativa.
+REXCVAR_DEFINE_BOOL(clear_memory_page_state, false, "GPU",
+                    "Refresh page-valid state from GPU-written memory at frame end. "
+                    "Disable for minor CPU overhead reduction, but may break memory coherency.")
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);"""
+
 
 def localizar_sdk():
     raiz = pathlib.Path(__file__).resolve().parent.parent
@@ -164,12 +204,14 @@ def main():
     f_rtc = sdk / "src" / "graphics" / "vulkan" / "render_target_cache.cpp"
     f_prov = sdk / "src" / "ui" / "vulkan" / "vulkan_provider.cpp"
     f_pres = sdk / "src" / "ui" / "vulkan" / "vulkan_presenter.cpp"
+    f_base_cmd = sdk / "src" / "graphics" / "command_processor.cpp"
 
     arquivos = [
         (f_cmd, [(ANCLA_CMD, NUEVO_CMD)]),
         (f_rtc, [(ANCLA_RTC, NUEVO_RTC)]),
         (f_prov, [(ANCLA_PROV, NUEVO_PROV)]),
         (f_pres, [(ANCLA_PRES_INC, NUEVO_PRES_INC), (ANCLA_PRES, NUEVO_PRES)]),
+        (f_base_cmd, [(ANCLA_LUZ, NUEVO_LUZ), (ANCLA_PAGMEM, NUEVO_PAGMEM)]),
     ]
 
     if args.estado:

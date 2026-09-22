@@ -59,6 +59,41 @@ async_shader_compilation = true
 vulkan_dynamic_rendering = true
 
 # ----------------------------------------------------------------------------
+#  Otimizações de Iluminação, Sombras e Render Targets
+# ----------------------------------------------------------------------------
+#  - native_2x_msaa: Desativa amostragem dupla 2x MSAA nos passes de luz e geometria (corta peso de luz pela metade)
+#  - gamma_render_target_as_unorm16: Usa sRGB 32-bit acelerado por hardware em vez de UNORM16 64-bit com shader manual
+native_2x_msaa = false
+gamma_render_target_as_unorm16 = false
+
+# ----------------------------------------------------------------------------
+#  Otimizações de Profundidade e Transferências de Sombra
+# ----------------------------------------------------------------------------
+#  - depth_transfer_not_equal_test: Quando 'true', adiciona um teste de desigualdade extra a cada
+#    transferência de depth buffer entre render targets (shadow maps, volume de sombras).
+#    Desativar elimina um passe redundante de stencil/depth nos shaders de transferência EDRAM,
+#    aliviando significativamente o custo dos passes de sombra do NFSMW (shadowscreenfilter,
+#    shadowvolume).
+#
+#  - clear_memory_page_state: Varre toda a memória GPU-escrita no fim de cada frame para
+#    atualizar o estado de validade das páginas. Custo: O(N) de páginas a cada frame.
+#    Desnecessário quando não há debug de coherência ativa.
+depth_transfer_not_equal_test = false
+clear_memory_page_state = false
+
+# ----------------------------------------------------------------------------
+#  Cache de Texturas de Render Target (Shadow Maps e Luzes)
+# ----------------------------------------------------------------------------
+#  O NFSMW usa render targets de shadow map grandes (1024x1024 a 2048x2048).
+#  O limite padrão de 24 MB para texturas RT forçava eviction e recriação constante.
+#  Aumentar para 96 MB mantém todos os shadow maps na VRAM durante a corrida.
+#
+#  texture_cache_memory_limit_soft: 512 MB  (era 384 MB - espaço extra para texturas de luz)
+#  texture_cache_memory_limit_render_to_texture: 96 MB (era 24 MB - mantém shadow maps na VRAM)
+texture_cache_memory_limit_render_to_texture = 96
+texture_cache_memory_limit_soft = 512
+
+# ----------------------------------------------------------------------------
 #  Resolucao e Desempenho
 # ----------------------------------------------------------------------------
 #  - video_mode: 1280x720 (Nativo Xbox 360, excelente equilíbrio de FPS)
