@@ -37,14 +37,10 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Expand Swap Space
-        run: |
-          echo "=== Configurando 6GB de Swap para compilação C++ ==="
-          sudo fallocate -l 6G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=6144
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-          free -h
+      - name: Set Swap Space (10GB)
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 10
 
       - name: Set up Java JDK 17
         uses: actions/setup-java@v5
