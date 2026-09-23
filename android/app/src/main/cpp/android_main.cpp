@@ -179,6 +179,7 @@ void android_main(struct android_app* state) {
   rex::cvar::SetFlagByName("log_file", "");
   rex::cvar::SetFlagByName("log_noisy", "false");
   rex::cvar::SetFlagByName("log_verbose", "false");
+  rex::cvar::SetFlagByName("protect_zero", "false");
 
   // Optional user overrides (nfsmw.toml in storage directory)
   if (external_path && external_path[0]) {

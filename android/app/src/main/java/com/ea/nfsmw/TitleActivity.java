@@ -113,7 +113,7 @@ public class TitleActivity extends Activity {
         // Verifica permissões e caminhos salvos
         checkStoragePermissions();
         checkAndLoadGamePath();
-        writeTomlConfiguration(false);
+        writeTomlConfiguration(true);
     }
 
     @Override
@@ -487,6 +487,7 @@ public class TitleActivity extends Activity {
         try {
             // Garante que as configurações estejam salvas antes de iniciar a NativeActivity
             writeTomlConfiguration(true);
+            extractBundledShaders(getExternalFilesDir(null));
 
             Intent intent = new Intent(this, GameActivity.class);
             if (verifiedGamePath != null) {
@@ -798,6 +799,7 @@ public class TitleActivity extends Activity {
             toml.append("grant_user_privileges = ").append(grant ? "true" : "false").append("\n");
             toml.append("user_profile_name = \"").append(gamertag).append("\"\n");
             toml.append("game_speed = ").append(String.format(java.util.Locale.US, "%.1f", (float) speed)).append("\n");
+            toml.append("protect_zero = false\n");
 
             String tomlContent = toml.toString();
 
@@ -824,6 +826,37 @@ public class TitleActivity extends Activity {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+
+    private void extractBundledShaders(File extDir) {
+        if (extDir == null) return;
+        try {
+            File shaderDir = new File(extDir, "cache/shaders/shareable");
+            if (!shaderDir.exists()) {
+                shaderDir.mkdirs();
+            }
+            String[] shaderFiles = new String[] { "454107D9.xsh", "454107D9.fbo.vk.xpso" };
+            for (String fileName : shaderFiles) {
+                File target = new File(shaderDir, fileName);
+                try (java.io.InputStream in = getAssets().open("shaders/shareable/" + fileName)) {
+                    long assetSize = in.available();
+                    if (!target.exists() || target.length() < assetSize) {
+                        try (java.io.FileOutputStream out = new java.io.FileOutputStream(target)) {
+                            byte[] buf = new byte[8192];
+                            int read;
+                            while ((read = in.read(buf)) != -1) {
+                                out.write(buf, 0, read);
+                            }
+                            android.util.Log.i("NFS-Title", "Extracted bundled shader asset: " + fileName + " (" + target.length() + " bytes)");
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w("NFS-Title", "Error extracting shader assets", e);
         }
     }
 

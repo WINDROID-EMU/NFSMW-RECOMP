@@ -444,6 +444,12 @@ class VulkanPipelineCache {
   FILE* pipeline_storage_file_ = nullptr;
   bool pipeline_storage_file_flush_needed_ = false;
 
+  // Native Vulkan hardware pipeline cache support.
+  VkPipelineCache hardware_pipeline_cache_ = VK_NULL_HANDLE;
+  std::filesystem::path hardware_pipeline_cache_file_path_;
+  void LoadHardwarePipelineCache(const std::filesystem::path& cache_file_path);
+  void SaveAndDestroyHardwarePipelineCache();
+
   // Thread for asynchronous writing to the storage streams.
   void StorageWriteThread();
   std::mutex storage_write_request_lock_;

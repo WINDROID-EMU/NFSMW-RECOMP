@@ -32,8 +32,13 @@
 /* --- Parameterized Macros (Primary API) --------------------------------- */
 
 /** @{ */
+#if defined(NDEBUG)
+#define REXLOG_CAT_TRACE(cat, ...) do {} while (0)
+#define REXLOG_CAT_DEBUG(cat, ...) do {} while (0)
+#else
 #define REXLOG_CAT_TRACE(cat, ...) REX_LOG_IMPL(cat, spdlog::level::trace, __VA_ARGS__)
 #define REXLOG_CAT_DEBUG(cat, ...) REX_LOG_IMPL(cat, spdlog::level::debug, __VA_ARGS__)
+#endif
 #define REXLOG_CAT_INFO(cat, ...) REX_LOG_IMPL(cat, spdlog::level::info, __VA_ARGS__)
 #define REXLOG_CAT_WARN(cat, ...) REX_LOG_IMPL(cat, spdlog::level::warn, __VA_ARGS__)
 #define REXLOG_CAT_ERROR(cat, ...) REX_LOG_IMPL(cat, spdlog::level::err, __VA_ARGS__)
@@ -42,8 +47,13 @@
 
 /* --- Noisy Parameterized Macros (cvar-gated) ------------------------------ */
 
+#if defined(NDEBUG)
+#define REXLOG_CAT_NOISY_TRACE(cat, ...) do {} while (0)
+#define REXLOG_CAT_NOISY_DEBUG(cat, ...) do {} while (0)
+#else
 #define REXLOG_CAT_NOISY_TRACE(cat, ...) REX_LOG_NOISY_IMPL(cat, spdlog::level::trace, __VA_ARGS__)
 #define REXLOG_CAT_NOISY_DEBUG(cat, ...) REX_LOG_NOISY_IMPL(cat, spdlog::level::debug, __VA_ARGS__)
+#endif
 
 /* --- Per-Subsystem Alias Macros - Core Category -------------------------- */
 

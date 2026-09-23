@@ -542,6 +542,24 @@ class VulkanCommandProcessor : public CommandProcessor {
   // Submission indices of frames that have already been submitted.
   uint64_t closed_frame_submissions_[kMaxFramesInFlight] = {};
 
+  struct GpuTelemetryStats {
+    uint32_t draws = 0;
+    uint32_t draws_indexed = 0;
+    uint32_t vertices = 0;
+    uint32_t resolves = 0;
+    uint32_t render_passes = 0;
+    uint32_t pipeline_binds = 0;
+    uint64_t fence_wait_ns = 0;
+    uint64_t draw_cpu_ns = 0;
+    uint64_t resolve_cpu_ns = 0;
+    uint64_t queue_submit_ns = 0;
+    uint64_t swap_cpu_ns = 0;
+  };
+  GpuTelemetryStats telemetry_current_frame_{};
+  GpuTelemetryStats telemetry_window_{};
+  uint32_t telemetry_window_frames_ = 0;
+  std::chrono::steady_clock::time_point telemetry_window_start_{};
+
   // <Submission where last used, resource>, sorted by the submission number.
   std::deque<std::pair<uint64_t, VkDeviceMemory>> destroy_memory_;
   std::deque<std::pair<uint64_t, VkBuffer>> destroy_buffers_;
@@ -794,6 +812,7 @@ class VulkanCommandProcessor : public CommandProcessor {
   VkRenderPass current_render_pass_;
   const VulkanRenderTargetCache::Framebuffer* current_framebuffer_;
   bool in_render_pass_ = false;
+  bool current_stencil_enable_ = false;
 
   // Currently bound graphics pipeline, either from the pipeline cache (with
   // potentially deferred creation - current_external_graphics_pipeline_ is
