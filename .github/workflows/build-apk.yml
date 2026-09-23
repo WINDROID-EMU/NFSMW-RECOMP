@@ -105,6 +105,12 @@ jobs:
             exit 1
           else
             echo "ReXGlue SDK pronto em android/rexglue-sdk"
+            # Sincroniza jniLibs com o SDK atualizado caso exista
+            if [ -d "android/app/src/main/jniLibs/arm64-v8a" ]; then
+              echo "Sincronizando bibliotecas do SDK com jniLibs..."
+              cp -f android/rexglue-sdk/lib/librexruntime.so android/app/src/main/jniLibs/arm64-v8a/ 2>/dev/null || true
+              cp -f android/rexglue-sdk/lib/librexgpu-xenos.so android/app/src/main/jniLibs/arm64-v8a/ 2>/dev/null || true
+            fi
           fi
 
           if [ ! -f "app/generated/default/sources.cmake" ]; then
