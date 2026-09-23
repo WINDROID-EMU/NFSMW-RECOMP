@@ -50,14 +50,58 @@ jobs:
           echo "Instalando NDK 27.2.12479018 e CMake 3.22.1..."
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.2.12479018" "cmake;3.22.1"
 
-      - name: Verify ReXGlue SDK & Generated Sources
+      - name: Download ReXGlue SDK & Verify Sources
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== Verificando dependências do build nativo ==="
-          if [ ! -d "android/rexglue-sdk" ]; then
-            echo "::warning title=ReXGlue SDK::Diretório 'android/rexglue-sdk' não encontrado no repositório. Se a compilação falhar no CMake, certifique-se de que o SDK está disponível ou versionado."
-          else
-            echo "ReXGlue SDK encontrado em android/rexglue-sdk"
+          echo "=== Obtendo última release do ReXGlue SDK de WINDROID-EMU/RunTime ==="
+          mkdir -p /tmp/sdk-download
+          
+          # Tenta baixar usando GitHub CLI (já presente nos runners ubuntu-latest)
+          if command -v gh &>/dev/null; then
+            echo "Tentando baixar via gh CLI..."
+            gh release download --repo WINDROID-EMU/RunTime --pattern "*android-arm64.zip" --dir /tmp/sdk-download || true
           fi
+
+          ZIP_FILE=$(find /tmp/sdk-download -name "*android-arm64.zip" | head -n 1)
+
+          # Se gh falhar ou não encontrar, faz fallback com curl
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Tentando baixar via curl/API do GitHub..."
+            SDK_URL=$(curl -sL https://api.github.com/repos/WINDROID-EMU/RunTime/releases/latest \
+              | grep "browser_download_url.*android-arm64.zip" \
+              | head -n 1 \
+              | cut -d '"' -f 4)
+            if [ -n "$SDK_URL" ]; then
+              echo "Baixando asset de: $SDK_URL"
+              curl -sL -o /tmp/sdk-download/rexglue-sdk.zip "$SDK_URL"
+              ZIP_FILE="/tmp/sdk-download/rexglue-sdk.zip"
+            fi
+          fi
+
+          if [ -z "$ZIP_FILE" ] || [ ! -f "$ZIP_FILE" ]; then
+            echo "::warning title=ReXGlue SDK::Não foi possível baixar o SDK de WINDROID-EMU/RunTime. Verificando se já existe localmente..."
+          else
+            echo "Extraindo ReXGlue SDK ($ZIP_FILE)..."
+            mkdir -p /tmp/sdk-extracted
+            unzip -q -o "$ZIP_FILE" -d /tmp/sdk-extracted
+            rm -rf android/rexglue-sdk
+            mkdir -p android/rexglue-sdk
+            if [ -d "/tmp/sdk-extracted/android-arm64" ]; then
+              cp -r /tmp/sdk-extracted/android-arm64/* android/rexglue-sdk/
+            else
+              cp -r /tmp/sdk-extracted/* android/rexglue-sdk/
+            fi
+            rm -rf /tmp/sdk-download /tmp/sdk-extracted
+          fi
+
+          if [ ! -d "android/rexglue-sdk" ] || [ ! -f "android/rexglue-sdk/lib/cmake/rexglue/rexglueConfig.cmake" ]; then
+            echo "::error title=ReXGlue SDK::ReXGlue SDK inválido ou ausente em android/rexglue-sdk!"
+            exit 1
+          else
+            echo "ReXGlue SDK pronto em android/rexglue-sdk"
+          fi
+
           if [ ! -f "app/generated/default/sources.cmake" ]; then
             echo "::warning title=Generated Sources::'app/generated/default/sources.cmake' não encontrado."
           else
