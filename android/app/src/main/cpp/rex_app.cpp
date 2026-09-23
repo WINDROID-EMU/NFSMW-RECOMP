@@ -812,12 +812,12 @@ bool ReXApp::SetupPresentation() {
 
   if (!config_.graphics && !config_.gpu_plugin.empty()) {
 #if defined(__ANDROID__)
-    void* handle = dlopen("librexgpu-xenosrd.so", RTLD_NOW);
+    void* handle = dlopen("librexgpu-xenos.so", RTLD_NOW);
     if (!handle) {
-      handle = dlopen("librexgpu-xenosd.so", RTLD_NOW);
+      handle = dlopen("librexgpu-xenosrd.so", RTLD_NOW);
     }
     if (!handle) {
-      handle = dlopen("librexgpu-xenos.so", RTLD_NOW);
+      handle = dlopen("librexgpu-xenosd.so", RTLD_NOW);
     }
     if (handle) {
       auto abi_fn = reinterpret_cast<rex::system::GpuAbiVersionFn>(
