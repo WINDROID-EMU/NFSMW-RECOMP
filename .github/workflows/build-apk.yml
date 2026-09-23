@@ -11,7 +11,7 @@ on:
       build_type:
         description: 'Tipo de compilação (debug ou release)'
         required: true
-        default: 'debug'
+        default: 'release'
         type: choice
         options:
           - debug
@@ -124,7 +124,7 @@ jobs:
       - name: Determine Build Type
         id: build_config
         run: |
-          BUILD_TYPE="debug"
+          BUILD_TYPE="release"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             BUILD_TYPE="${{ inputs.build_type }}"
           fi
@@ -137,6 +137,14 @@ jobs:
             echo "gradle_task=assembleDebug" >> $GITHUB_OUTPUT
             echo "apk_path=android/app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_OUTPUT
             echo "apk_name=NFSMW-Android-debug.apk" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Ensure Native Libraries are Stripped
+        run: |
+          STRIP_CMD="$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+          if [ -d "android/rexglue-sdk/lib" ]; then
+            echo "Stripping SDK shared libraries..."
+            find android/rexglue-sdk/lib -name "*.so" -exec $STRIP_CMD --strip-unneeded {} + 2>/dev/null || true
           fi
 
       - name: Build Android APK with Gradle

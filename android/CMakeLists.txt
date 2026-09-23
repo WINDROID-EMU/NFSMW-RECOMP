@@ -64,7 +64,7 @@ add_library(nfsmw SHARED ${NFSMW_ANDROID_SOURCES})
 
 target_link_options(nfsmw PRIVATE
     "-u" "ANativeActivity_onCreate"
-    "-Wl,--export-dynamic"
+    "-Wl,--gc-sections"
 )
 
 target_include_directories(nfsmw PRIVATE
@@ -86,6 +86,9 @@ target_compile_options(nfsmw PRIVATE
     -frtti
     -funroll-loops
     -DNDEBUG
+    -fomit-frame-pointer
+    -fvisibility=hidden
+    -fvisibility-inlines-hidden
     -Wno-error=format-security
 )
 
