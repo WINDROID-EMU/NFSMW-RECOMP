@@ -224,6 +224,30 @@
                 android:textSize="10sp"
                 android:layout_marginBottom="10dp" />
 
+            <!-- Pipeline Creation Threads -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Threads de Compilação Vulkan (Pipelines):"
+                android:textColor="#E0E0E0"
+                android:textSize="12sp"
+                android:layout_marginBottom="2dp" />
+
+            <Spinner
+                android:id="@+id/sp_pipeline_threads"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:background="@drawable/spinner_bg"
+                android:layout_marginBottom="2dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ℹ 2 Threads economiza bateria e evita aquecimento; 4 Threads compila mais rápido."
+                android:textColor="#A0A0A0"
+                android:textSize="10sp"
+                android:layout_marginBottom="10dp" />
+
             <!-- Readback Resolve -->
             <Switch
                 android:id="@+id/sw_readback_resolve"

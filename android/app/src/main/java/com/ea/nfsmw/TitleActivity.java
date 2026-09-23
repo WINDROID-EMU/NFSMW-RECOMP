@@ -44,6 +44,7 @@ public class TitleActivity extends Activity {
     private static final String KEY_PRESENT_EFFECT = "cfg_present_effect";
     private static final String KEY_SHARPNESS = "cfg_sharpness";
     private static final String KEY_EDRAM_PATH = "cfg_edram_path";
+    private static final String KEY_PIPELINE_THREADS = "cfg_pipeline_threads";
     private static final String KEY_ASYNC_SHADERS = "cfg_async_shaders";
     private static final String KEY_READBACK_RESOLVE = "cfg_readback_resolve";
     private static final String KEY_ANISOTROPIC = "cfg_anisotropic";
@@ -521,6 +522,7 @@ public class TitleActivity extends Activity {
         Spinner spEdramPath = dialogView.findViewById(R.id.sp_edram_path);
         Spinner spAnisotropic = dialogView.findViewById(R.id.sp_anisotropic);
         Spinner spAntialiasing = dialogView.findViewById(R.id.sp_antialiasing);
+        Spinner spPipelineThreads = dialogView.findViewById(R.id.sp_pipeline_threads);
 
         // Switches
         Switch swVsync = dialogView.findViewById(R.id.sw_vsync);
@@ -560,6 +562,9 @@ public class TitleActivity extends Activity {
         final String[] aaLabels = {"Desativado (none)", "FXAA", "FXAA Extreme"};
         final String[] aaValues = {"none", "fxaa", "fxaa_extreme"};
 
+        final String[] threadLabels = {"2 Threads (Recomendado - Frio & Bateria)", "4 Threads (Compilação Rápida)", "Automático (-1)"};
+        final int[] threadValues = {2, 4, -1};
+
         // Set adapters
         setupSpinner(spResolution, resLabels);
         setupSpinner(spResolutionScale, scaleLabels);
@@ -568,6 +573,7 @@ public class TitleActivity extends Activity {
         setupSpinner(spEdramPath, edramLabels);
         setupSpinner(spAnisotropic, anisoLabels);
         setupSpinner(spAntialiasing, aaLabels);
+        setupSpinner(spPipelineThreads, threadLabels);
 
         // Load saved values
         String curRes = prefs.getString(KEY_RESOLUTION, "720p");
@@ -587,6 +593,9 @@ public class TitleActivity extends Activity {
 
         int curAniso = prefs.getInt(KEY_ANISOTROPIC, 0);
         spAnisotropic.setSelection(findIntIndex(anisoValues, curAniso, 0));
+
+        int curThreads = prefs.getInt(KEY_PIPELINE_THREADS, 2);
+        spPipelineThreads.setSelection(findIntIndex(threadValues, curThreads, 0));
 
         String curAa = prefs.getString(KEY_ANTIALIASING, "none");
         spAntialiasing.setSelection(findStringIndex(aaValues, curAa, 0));
@@ -645,6 +654,7 @@ public class TitleActivity extends Activity {
                 spEdramPath.setSelection(0); // rtv
                 spAnisotropic.setSelection(0); // 0
                 spAntialiasing.setSelection(0); // none
+                spPipelineThreads.setSelection(0); // 2 threads
                 swVsync.setChecked(true);
                 swAsyncShaders.setChecked(true);
                 swReadbackResolve.setChecked(false);
@@ -670,6 +680,7 @@ public class TitleActivity extends Activity {
                 String selEdram = edramValues[spEdramPath.getSelectedItemPosition()];
                 int selAniso = anisoValues[spAnisotropic.getSelectedItemPosition()];
                 String selAa = aaValues[spAntialiasing.getSelectedItemPosition()];
+                int selThreads = threadValues[spPipelineThreads.getSelectedItemPosition()];
 
                 boolean selVsync = swVsync.isChecked();
                 boolean selAsyncShaders = swAsyncShaders.isChecked();
@@ -690,6 +701,7 @@ public class TitleActivity extends Activity {
                         .putString(KEY_PRESENT_EFFECT, selEffect)
                         .putString(KEY_EDRAM_PATH, selEdram)
                         .putInt(KEY_ANISOTROPIC, selAniso)
+                        .putInt(KEY_PIPELINE_THREADS, selThreads)
                         .putString(KEY_ANTIALIASING, selAa)
                         .putBoolean(KEY_VSYNC, selVsync)
                         .putBoolean(KEY_ASYNC_SHADERS, selAsyncShaders)
@@ -724,6 +736,7 @@ public class TitleActivity extends Activity {
             int sharpness = prefs.getInt(KEY_SHARPNESS, 0);
             String edram = prefs.getString(KEY_EDRAM_PATH, "rtv");
             boolean asyncShaders = prefs.getBoolean(KEY_ASYNC_SHADERS, true);
+            int pipelineThreads = prefs.getInt(KEY_PIPELINE_THREADS, 2);
             boolean readback = prefs.getBoolean(KEY_READBACK_RESOLVE, false);
             int aniso = prefs.getInt(KEY_ANISOTROPIC, 0);
             String aa = prefs.getString(KEY_ANTIALIASING, "none");
@@ -772,6 +785,7 @@ public class TitleActivity extends Activity {
             toml.append("swap_post_effect = \"").append(aa).append("\"\n\n");
 
             toml.append("async_shader_compilation = ").append(asyncShaders ? "true" : "false").append("\n");
+            toml.append("vulkan_pipeline_creation_threads = ").append(pipelineThreads).append("\n");
             toml.append("readback_resolve = \"").append(readback ? "fast" : "none").append("\"\n");
             toml.append("gpu_3d_to_2d_texture = true\n");
             toml.append("native_2x_msaa = false\n");

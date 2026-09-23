@@ -160,7 +160,7 @@ void android_main(struct android_app* state) {
   rex::cvar::SetFlagByName("clear_memory_page_state", "false");
   rex::cvar::SetFlagByName("texture_cache_memory_limit_render_to_texture", "96");
   rex::cvar::SetFlagByName("texture_cache_memory_limit_soft", "512");
-  rex::cvar::SetFlagByName("vulkan_pipeline_creation_threads", "4");
+  rex::cvar::SetFlagByName("vulkan_pipeline_creation_threads", "2");
   rex::cvar::SetFlagByName("store_shaders", "true");
   rex::cvar::SetFlagByName("vsync", "true");
   rex::cvar::SetFlagByName("mnk_mode", "false");
