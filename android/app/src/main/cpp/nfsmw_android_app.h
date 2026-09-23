@@ -20,6 +20,7 @@ extern const rex::PPCImageInfo PPCImageConfig;
 
 struct PPCContext;
 extern "C" void rexcrt_memset(PPCContext& ctx, uint8_t* base);
+extern "C" void rexcrt_memcpy(PPCContext& ctx, uint8_t* base);
 
 namespace rex::android {
 
@@ -42,17 +43,22 @@ class NfsmwAndroidApp final : public NfsmwApp {
   void OnPostSetup() override {
     NfsmwApp::OnPostSetup();
 
+    // Explicitly enforce readback_resolve as none on mobile to avoid GPU pipeline stalls
+    rex::cvar::SetFlagByName("readback_resolve", "fast");
+
     auto* kernel = rex::system::kernel_state();
     if (kernel) {
-      // Fast-path: Replace 1400+ emulated PowerPC memset loops with native ARM64 NEON std::memset
+      // Fast-path: Replace emulated PowerPC memset / memcpy loops with native ARM64 NEON
       if (kernel->function_dispatcher()) {
         kernel->function_dispatcher()->SetFunction(0x826BE610, rexcrt_memset);
+        kernel->function_dispatcher()->SetFunction(0x826BE1B0, rexcrt_memcpy);
       }
       if (kernel->memory()) {
         kernel->memory()->SetFunction(0x826BE610, rexcrt_memset);
+        kernel->memory()->SetFunction(0x826BE1B0, rexcrt_memcpy);
       }
       __android_log_print(ANDROID_LOG_INFO, "NFS-FastPath",
-                          "Hooked 0x826BE610 (guest memset) -> host native rexcrt_memset (NEON accelerated)");
+                          "Hooked 0x826BE610 (memset) & 0x826BE1B0 (memcpy) -> host native ARM64 NEON");
     }
   }
 

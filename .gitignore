@@ -93,3 +93,7 @@ android/local.properties
 *.aab
 lib_compat/
 
+
+# Ignore heavy debug native libraries
+android/rexglue-sdk/lib/*d.so
+android/rexglue-sdk/lib/*d.a

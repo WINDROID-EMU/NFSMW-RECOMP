@@ -40,6 +40,7 @@ void AndroidWindow::AttachNativeWindow(ANativeWindow* window) {
     int32_t w = ANativeWindow_getWidth(native_window_);
     int32_t h = ANativeWindow_getHeight(native_window_);
     if (w > 0 && h > 0) {
+      ANativeWindow_setBuffersGeometry(native_window_, w, h, WINDOW_FORMAT_RGBA_8888);
       UpdateDimensions(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
     }
   }

@@ -62,7 +62,7 @@ class MnkInputDriver final : public InputDriver,
   void EnqueueKeystroke(uint16_t vk_pad, bool down);
 
   // Called from the guest thread. The rest of the capture path stays on the UI
-  // thread, since every Window call in it reaches SDL.
+  // thread, since every Window call in it reaches the native window.
   void QueueMouseCaptureUpdate(bool should_capture);
   void ApplyMouseCaptureFromUIThread();
   void ReleaseMouseCaptureFromUIThread(rex::ui::Window* window);

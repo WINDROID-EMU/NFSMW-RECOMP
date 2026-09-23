@@ -31,18 +31,8 @@
 #include <rex/memory.h>
 #include <rex/platform.h>
 
-#if REX_ARCH_AMD64
-// 128-bit SSSE3-level (SSE2+ for integer comparison, SSSE3 for pshufb) or AVX
-// (256-bit AVX only got integer operations such as comparison in AVX2, which is
-// above the minimum requirements of Xenia).
-#include <tmmintrin.h>
-#define XE_GPU_PRIMITIVE_PROCESSOR_SIMD_SIZE 16
-#elif REX_ARCH_ARM64
 #include <arm_neon.h>
 #define XE_GPU_PRIMITIVE_PROCESSOR_SIMD_SIZE 16
-#else
-#define XE_GPU_PRIMITIVE_PROCESSOR_SIMD_SIZE 0
-#endif  // XE_ARCH
 
 // The idea behind this config variable is to force both indirection without
 // primitive reset and pre-masking / pre-swapping with primitive reset,
@@ -299,45 +289,18 @@ class PrimitiveProcessor {
 
  private:
 #if XE_GPU_PRIMITIVE_PROCESSOR_SIMD_SIZE
-#if REX_ARCH_AMD64
-  // SSSE3 or AVX.
-  using SimdVectorU16 = __m128i;
-  using SimdVectorU32 = __m128i;
-  static SimdVectorU16 ReplicateU16(uint16_t value) { return _mm_set1_epi16(int16_t(value)); }
-  static SimdVectorU32 ReplicateU32(uint32_t value) { return _mm_set1_epi32(int32_t(value)); }
-  static SimdVectorU16 LoadAlignedVectorU16(const uint16_t* source) {
-    return _mm_load_si128(reinterpret_cast<const __m128i*>(source));
-  }
-  static SimdVectorU32 LoadAlignedVectorU32(const uint32_t* source) {
-    return _mm_load_si128(reinterpret_cast<const __m128i*>(source));
-  }
-  static void StoreUnalignedVectorU16(uint16_t* dest, SimdVectorU16 source) {
-    _mm_storeu_si128(reinterpret_cast<__m128i*>(dest), source);
-  }
-  static void StoreUnalignedVectorU32(uint32_t* dest, SimdVectorU32 source) {
-    _mm_storeu_si128(reinterpret_cast<__m128i*>(dest), source);
-  }
-#elif REX_ARCH_ARM64
   // NEON.
   using SimdVectorU16 = uint16x8_t;
   using SimdVectorU32 = uint32x4_t;
   static SimdVectorU16 ReplicateU16(uint16_t value) { return vdupq_n_u16(value); }
   static SimdVectorU32 ReplicateU32(uint32_t value) { return vdupq_n_u32(value); }
   static SimdVectorU16 LoadAlignedVectorU16(const uint16_t* source) {
-#if REX_COMPILER_MSVC
-    return vld1q_u16_ex(source, sizeof(uint16x8_t) * CHAR_BIT);
-#else
     return vld1q_u16(
         reinterpret_cast<const uint16_t*>(__builtin_assume_aligned(source, sizeof(uint16x8_t))));
-#endif
   }
   static SimdVectorU32 LoadAlignedVectorU32(const uint32_t* source) {
-#if REX_COMPILER_MSVC
-    return vld1q_u32_ex(source, sizeof(uint16x8_t) * CHAR_BIT);
-#else
     return vld1q_u32(
         reinterpret_cast<const uint32_t*>(__builtin_assume_aligned(source, sizeof(uint32x4_t))));
-#endif
   }
   static void StoreUnalignedVectorU16(uint16_t* dest, SimdVectorU16 source) {
     vst1q_u16(dest, source);
@@ -345,9 +308,6 @@ class PrimitiveProcessor {
   static void StoreUnalignedVectorU32(uint32_t* dest, SimdVectorU32 source) {
     vst1q_u32(dest, source);
   }
-#else
-#error SIMD vector types and constant loads not specified.
-#endif  // XE_ARCH
   static_assert(sizeof(SimdVectorU16) == XE_GPU_PRIMITIVE_PROCESSOR_SIMD_SIZE,
                 "XE_GPU_PRIMITIVE_PROCESSOR_SIMD_SIZE must reflect the vector size "
                 "actually used");
@@ -399,15 +359,6 @@ class PrimitiveProcessor {
     if (count >= kSimdVectorU32Elements) {
       SimdVectorU32 reset_index_guest_endian_simd = ReplicateU32(reset_index_guest_endian);
       SimdVectorU32 low_bits_mask_guest_endian_simd = ReplicateU32(low_bits_mask_guest_endian);
-#if REX_ARCH_AMD64
-      __m128i host_swap_shuffle;
-      if constexpr (HostSwap != xenos::Endian::kNone) {
-        host_swap_shuffle = _mm_set_epi32(int32_t(xenos::GpuSwap(uint32_t(0x0F0E0D0C), HostSwap)),
-                                          int32_t(xenos::GpuSwap(uint32_t(0x0B0A0908), HostSwap)),
-                                          int32_t(xenos::GpuSwap(uint32_t(0x07060504), HostSwap)),
-                                          int32_t(xenos::GpuSwap(uint32_t(0x03020100), HostSwap)));
-      }
-#endif  // REX_ARCH_AMD64
       while (count >= kSimdVectorU32Elements) {
         count -= kSimdVectorU32Elements;
         // Comparison produces 0 or 0xFFFF on AVX and Neon - we need 0xFFFF as
@@ -416,14 +367,6 @@ class PrimitiveProcessor {
         SimdVectorU32 source_simd = LoadAlignedVectorU32(source);
         source += kSimdVectorU32Elements;
         SimdVectorU32 result_simd;
-#if REX_ARCH_AMD64
-        source_simd = _mm_and_si128(source_simd, low_bits_mask_guest_endian_simd);
-        result_simd =
-            _mm_or_si128(source_simd, _mm_cmpeq_epi32(source_simd, reset_index_guest_endian_simd));
-        if constexpr (HostSwap != xenos::Endian::kNone) {
-          result_simd = _mm_shuffle_epi8(result_simd, host_swap_shuffle);
-        }
-#elif REX_ARCH_ARM64
         source_simd = vandq_u32(source_simd, low_bits_mask_guest_endian_simd);
         result_simd = vorrq_u32(source_simd, vceqq_u32(source_simd, reset_index_guest_endian_simd));
         if constexpr (HostSwap == xenos::Endian::k8in16) {
@@ -433,9 +376,6 @@ class PrimitiveProcessor {
         } else if constexpr (HostSwap == xenos::Endian::k16in32) {
           result_simd = vreinterpretq_u32_u16(vrev32q_u16(vreinterpretq_u16_u32(result_simd)));
         }
-#else
-#error SIMD ReplaceResetIndex32To24 not implemented.
-#endif  // XE_ARCH
         StoreUnalignedVectorU32(dest, result_simd);
         dest += kSimdVectorU32Elements;
       }

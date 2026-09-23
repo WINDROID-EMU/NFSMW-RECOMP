@@ -78,7 +78,7 @@ struct RuntimeConfig {
 /// Usage:
 ///   rex::RuntimeConfig config;
 ///   config.graphics      = REX_GRAPHICS_BACKEND(MyCustomGraphicsSystem);
-///   config.audio_factory = REX_AUDIO_BACKEND(rex::audio::sdl::SDLAudioSystem);
+///   config.audio_factory = REX_AUDIO_BACKEND(rex::audio::android::AAudioSystem);
 #define REX_GRAPHICS_BACKEND(Type) std::make_unique<Type>()
 #define REX_AUDIO_BACKEND(Type)                                                                 \
   [](::rex::runtime::FunctionDispatcher* _fd) -> std::unique_ptr<::rex::system::IAudioSystem> { \

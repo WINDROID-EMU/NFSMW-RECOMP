@@ -38,14 +38,7 @@ REXCVAR_DECLARE(int32_t, video_mode_height);
 REXCVAR_DECLARE(double, video_mode_refresh_rate);
 REXCVAR_DECLARE(std::string, resolution);
 
-#if REX_HAS_D3D12
-REXCVAR_DECLARE(bool, d3d12_debug);
-REXCVAR_DECLARE(bool, d3d12_break_on_error);
-REXCVAR_DECLARE(bool, d3d12_break_on_warning);
-REXCVAR_DECLARE(int32_t, d3d12_adapter);
-REXCVAR_DECLARE(int32_t, d3d12_queue_priority);
-REXCVAR_DECLARE(bool, d3d12_allow_variable_refresh_rate_and_tearing);
-#endif  // REX_HAS_D3D12
+
 
 #if REX_HAS_VULKAN
 REXCVAR_DECLARE(bool, vulkan_log_debug_messages);

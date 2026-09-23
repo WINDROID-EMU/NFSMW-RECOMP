@@ -5,6 +5,10 @@
 #include <cmath>
 #include <algorithm>
 
+#if defined(__aarch64__)
+#include <arm_neon.h>
+#endif
+
 #define TAG "NFS-AAudio"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, TAG, __VA_ARGS__)
@@ -19,8 +23,8 @@ constexpr uint32_t kOutputChannels = 2; // Stereo
 
 AndroidAAudioDriver::AndroidAAudioDriver(memory::Memory* memory, rex::thread::Semaphore* semaphore)
     : AudioDriver(memory), semaphore_(semaphore) {
-  ring_buffer_.resize(kRingBufferCapacityFrames * kOutputChannels, 0.0f);
-  LOGI("AndroidAAudioDriver constructed");
+  ring_buffer_.resize(kRingBufferSampleCapacity, 0.0f);
+  LOGI("AndroidAAudioDriver constructed (Lock-Free SPSC, Capacity=%zu)", kRingBufferSampleCapacity);
 }
 
 AndroidAAudioDriver::~AndroidAAudioDriver() {
@@ -41,12 +45,24 @@ bool AndroidAAudioDriver::Initialize() {
   AAudioStreamBuilder_setSampleRate(builder, kSampleRate);
   AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_OUTPUT);
   AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
-  AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_SHARED);
+  AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_EXCLUSIVE);
   AAudioStreamBuilder_setDataCallback(builder, AudioCallback, this);
   AAudioStreamBuilder_setErrorCallback(builder, ErrorCallback, this);
 
   result = AAudioStreamBuilder_openStream(builder, &stream_);
+  if (result != AAUDIO_OK || !stream_) {
+    // Fallback to SHARED mode
+    AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_SHARED);
+    result = AAudioStreamBuilder_openStream(builder, &stream_);
+  }
   AAudioStreamBuilder_delete(builder);
+
+  if (result == AAUDIO_OK && stream_) {
+    int32_t burst = AAudioStream_getFramesPerBurst(stream_);
+    if (burst > 0) {
+      AAudioStream_setBufferSizeInFrames(stream_, burst * 2);
+    }
+  }
 
   if (result != AAUDIO_OK || !stream_) {
     LOGE("Failed to open AAudioStream: %s", AAudio_convertResultToText(result));
@@ -72,7 +88,6 @@ void AndroidAAudioDriver::Shutdown() {
     return;
   }
 
-  // Wake up any threads waiting on audio semaphore
   if (semaphore_) {
     semaphore_->Release(16, nullptr);
   }
@@ -84,19 +99,20 @@ void AndroidAAudioDriver::Shutdown() {
   }
 }
 
+#if !defined(__aarch64__)
 static inline float LoadBEFloat(uint32_t raw_be) {
   uint32_t le = __builtin_bswap32(raw_be);
   float f;
   std::memcpy(&f, &le, sizeof(float));
   return f;
 }
+#endif
 
 void AndroidAAudioDriver::SubmitFrame(uint32_t samples_ptr) {
   if (!is_running_.load(std::memory_order_relaxed)) {
     return;
   }
 
-  // Xbox 360 audio frame buffer is allocated in guest virtual memory (heap).
   uint8_t* frame_data = nullptr;
   if (memory_) {
     frame_data = memory_->TranslateVirtual<uint8_t*>(samples_ptr);
@@ -106,13 +122,9 @@ void AndroidAAudioDriver::SubmitFrame(uint32_t samples_ptr) {
   }
 
   if (!frame_data) {
-    LOGW("SubmitFrame: null frame_data for samples_ptr=0x%08X", samples_ptr);
     return;
   }
 
-  // Xbox 360 audio frame is PLANAR, 6 channels of 256 samples each (6144 bytes).
-  // Channel layout: 0=FL, 1=FR, 2=C, 3=LFE, 4=BL, 5=BR
-  // All float samples are stored in Big-Endian byte order.
   constexpr size_t kChannelStride = 256;
   const uint32_t* raw_src = reinterpret_cast<const uint32_t*>(frame_data);
 
@@ -128,8 +140,47 @@ void AndroidAAudioDriver::SubmitFrame(uint32_t samples_ptr) {
   constexpr float kLfeGain = 0.5f;
 
   float stereo_temp[kSamplesPerChannel * kOutputChannels];
-  float max_val = 0.0f;
 
+#if defined(__aarch64__)
+  const float32x4_t v_c_gain = vdupq_n_f32(kCenterGain);
+  const float32x4_t v_sur_gain = vdupq_n_f32(kSurroundGain);
+  const float32x4_t v_lfe_gain = vdupq_n_f32(kLfeGain);
+  const float32x4_t v_min = vdupq_n_f32(-1.0f);
+  const float32x4_t v_max = vdupq_n_f32(1.0f);
+
+  for (size_t i = 0; i < kSamplesPerChannel; i += 4) {
+    // Reverse Big-Endian byte order to Host Little-Endian for 4 floats per channel
+    uint32x4_t u_fl  = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(vld1q_u32(ch_fl + i))));
+    uint32x4_t u_fr  = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(vld1q_u32(ch_fr + i))));
+    uint32x4_t u_c   = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(vld1q_u32(ch_c + i))));
+    uint32x4_t u_lfe = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(vld1q_u32(ch_lfe + i))));
+    uint32x4_t u_bl  = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(vld1q_u32(ch_bl + i))));
+    uint32x4_t u_br  = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(vld1q_u32(ch_br + i))));
+
+    float32x4_t fl  = vreinterpretq_f32_u32(u_fl);
+    float32x4_t fr  = vreinterpretq_f32_u32(u_fr);
+    float32x4_t c   = vreinterpretq_f32_u32(u_c);
+    float32x4_t lfe = vreinterpretq_f32_u32(u_lfe);
+    float32x4_t bl  = vreinterpretq_f32_u32(u_bl);
+    float32x4_t br  = vreinterpretq_f32_u32(u_br);
+
+    float32x4_t left = fl;
+    left = vfmaq_f32(left, c, v_c_gain);
+    left = vfmaq_f32(left, bl, v_sur_gain);
+    left = vfmaq_f32(left, lfe, v_lfe_gain);
+    left = vminq_f32(vmaxq_f32(left, v_min), v_max);
+
+    float32x4_t right = fr;
+    right = vfmaq_f32(right, c, v_c_gain);
+    right = vfmaq_f32(right, br, v_sur_gain);
+    right = vfmaq_f32(right, lfe, v_lfe_gain);
+    right = vminq_f32(vmaxq_f32(right, v_min), v_max);
+
+    float32x4x2_t stereo = vzipq_f32(left, right);
+    vst1q_f32(stereo_temp + (i * 2) + 0, stereo.val[0]);
+    vst1q_f32(stereo_temp + (i * 2) + 4, stereo.val[1]);
+  }
+#else
   for (size_t i = 0; i < kSamplesPerChannel; ++i) {
     const float fl  = LoadBEFloat(ch_fl[i]);
     const float fr  = LoadBEFloat(ch_fr[i]);
@@ -141,37 +192,27 @@ void AndroidAAudioDriver::SubmitFrame(uint32_t samples_ptr) {
     float left  = fl + (c * kCenterGain) + (bl * kSurroundGain) + (lfe * kLfeGain);
     float right = fr + (c * kCenterGain) + (br * kSurroundGain) + (lfe * kLfeGain);
 
-    left  = std::clamp(left, -1.0f, 1.0f);
-    right = std::clamp(right, -1.0f, 1.0f);
+    stereo_temp[i * 2 + 0] = std::clamp(left, -1.0f, 1.0f);
+    stereo_temp[i * 2 + 1] = std::clamp(right, -1.0f, 1.0f);
+  }
+#endif
 
-    stereo_temp[i * 2 + 0] = left;
-    stereo_temp[i * 2 + 1] = right;
+  // Lock-Free SPSC Push to Ring Buffer (Zero Mutex Contentions)
+  size_t w = write_pos_.load(std::memory_order_relaxed);
+  size_t r = read_pos_.load(std::memory_order_acquire);
 
-    max_val = std::max(max_val, std::max(std::abs(left), std::abs(right)));
+  constexpr size_t kTotalSamples = kSamplesPerChannel * kOutputChannels; // 512
+  constexpr size_t kCapacity = kRingBufferSampleCapacity;                // 16384
+  constexpr size_t kMask = kCapacity - 1;
+
+  if (w - r + kTotalSamples > kCapacity) {
+    read_pos_.store(w + kTotalSamples - kCapacity, std::memory_order_release);
   }
 
-  // Push into ring buffer
-  {
-    std::lock_guard<std::mutex> lock(buffer_mutex_);
-    for (size_t i = 0; i < kSamplesPerChannel * kOutputChannels; ++i) {
-      size_t next_write = (write_pos_ + 1) % ring_buffer_.size();
-      if (next_write == read_pos_) {
-        // Buffer full: drop oldest 2 samples (1 stereo frame) to keep latency low
-        read_pos_ = (read_pos_ + 2) % ring_buffer_.size();
-      }
-      ring_buffer_[write_pos_] = stereo_temp[i];
-      write_pos_ = next_write;
-    }
+  for (size_t i = 0; i < kTotalSamples; ++i) {
+    ring_buffer_[(w + i) & kMask] = stereo_temp[i];
   }
-
-  static int s_frame_cnt = 0;
-  if (++s_frame_cnt % 300 == 1 || (max_val > 0.05f && s_frame_cnt % 60 == 1)) {
-    LOGI("SubmitFrame #%d: max_sample=%.4f (L=%.3f, R=%.3f)",
-         s_frame_cnt, max_val, stereo_temp[0], stereo_temp[1]);
-  }
-
-  // Flow control: Semaphore is NOT released here!
-  // It is released in AudioCallback as frames are actually consumed by the audio hardware.
+  write_pos_.store(w + kTotalSamples, std::memory_order_release);
 }
 
 aaudio_data_callback_result_t AndroidAAudioDriver::AudioCallback(
@@ -182,25 +223,24 @@ aaudio_data_callback_result_t AndroidAAudioDriver::AudioCallback(
   auto* self = static_cast<AndroidAAudioDriver*>(userData);
   float* out = static_cast<float*>(audioData);
 
-  size_t frames_read = 0;
-  {
-    std::lock_guard<std::mutex> lock(self->buffer_mutex_);
-    for (int32_t f = 0; f < numFrames; ++f) {
-      if (self->read_pos_ != self->write_pos_) {
-        out[f * 2 + 0] = self->ring_buffer_[self->read_pos_];
-        self->read_pos_ = (self->read_pos_ + 1) % self->ring_buffer_.size();
-        out[f * 2 + 1] = self->ring_buffer_[self->read_pos_];
-        self->read_pos_ = (self->read_pos_ + 1) % self->ring_buffer_.size();
-        frames_read++;
-      } else {
-        out[f * 2 + 0] = 0.0f;
-        out[f * 2 + 1] = 0.0f;
-      }
-    }
+  size_t r = self->read_pos_.load(std::memory_order_relaxed);
+  size_t w = self->write_pos_.load(std::memory_order_acquire);
+
+  size_t available_samples = (w > r) ? (w - r) : 0;
+  size_t samples_to_read = static_cast<size_t>(numFrames) * kOutputChannels;
+  size_t actual_samples = std::min(available_samples, samples_to_read);
+
+  constexpr size_t kMask = kRingBufferSampleCapacity - 1;
+  for (size_t i = 0; i < actual_samples; ++i) {
+    out[i] = self->ring_buffer_[(r + i) & kMask];
+  }
+  if (actual_samples < samples_to_read) {
+    std::memset(out + actual_samples, 0, (samples_to_read - actual_samples) * sizeof(float));
   }
 
-  // Flow control: Release 1 permit on semaphore for every 256 frames consumed by the audio DAC.
-  // This throttles the guest audio worker thread to exactly 48kHz (187.5 frames/second).
+  self->read_pos_.store(r + actual_samples, std::memory_order_release);
+
+  size_t frames_read = actual_samples / kOutputChannels;
   if (self->semaphore_ && frames_read > 0) {
     self->consumed_frames_ += frames_read;
     int release_count = static_cast<int>(self->consumed_frames_ / kSamplesPerChannel);
@@ -225,9 +265,9 @@ void AndroidAAudioDriver::ErrorCallback(
   }
 }
 
-// ---------------------------------------------------------------------------
+// =============================================================================
 //  AndroidAAudioSystem implementation
-// ---------------------------------------------------------------------------
+// =============================================================================
 
 AndroidAAudioSystem::AndroidAAudioSystem(runtime::FunctionDispatcher* function_dispatcher)
     : AudioSystem(function_dispatcher) {
@@ -244,17 +284,22 @@ void AndroidAAudioSystem::Initialize() {
 
 X_STATUS AndroidAAudioSystem::CreateDriver(size_t index, rex::thread::Semaphore* semaphore,
                                           AudioDriver** out_driver) {
+  assert_not_null(out_driver);
   auto driver = std::make_unique<AndroidAAudioDriver>(memory_, semaphore);
   if (!driver->Initialize()) {
     LOGE("Failed to initialize AndroidAAudioDriver for client %zu", index);
     return X_STATUS_UNSUCCESSFUL;
   }
+
   *out_driver = driver.release();
   return X_STATUS_SUCCESS;
 }
 
 void AndroidAAudioSystem::DestroyDriver(AudioDriver* driver) {
-  delete driver;
+  assert_not_null(driver);
+  auto* aaudio_driver = static_cast<AndroidAAudioDriver*>(driver);
+  aaudio_driver->Shutdown();
+  delete aaudio_driver;
 }
 
 }  // namespace rex::audio::android

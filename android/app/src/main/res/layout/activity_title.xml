@@ -134,7 +134,7 @@
 
         <Button
             android:id="@+id/btn_settings"
-            style="@android:style/Widget.Button"
+            style="@android:style/Widget.Button.Inset"
             android:layout_width="wrap_content"
             android:layout_height="38dp"
             android:elevation="4dp"

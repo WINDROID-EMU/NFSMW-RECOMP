@@ -20,11 +20,7 @@
 REXCVAR_DECLARE(bool, clock_no_scaling);
 REXCVAR_DECLARE(bool, clock_source_raw);
 
-#if REX_ARCH_AMD64
-// Raw clock source requires platform-specific implementation
-// Disable for now - use platform clock functions instead
-#define REX_CLOCK_RAW_AVAILABLE 0
-#endif
+
 
 namespace rex::chrono {
 

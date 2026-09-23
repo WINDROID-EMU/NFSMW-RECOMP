@@ -22,9 +22,7 @@
 
 #include <rex/platform.h>
 
-#if REX_ARCH_AMD64
-#include <xmmintrin.h>
-#endif
+
 
 namespace rex {
 
@@ -190,41 +188,7 @@ inline T rotate_left(T v, uint8_t sh) {
   return (T(v) << sh) | (T(v) >> ((sizeof(T) * 8) - sh));
 }
 
-#if REX_ARCH_AMD64
-// Utilities for SSE values.
-template <int N>
-float m128_f32(const __m128& v) {
-  float ret;
-  _mm_store_ss(&ret, _mm_shuffle_ps(v, v, _MM_SHUFFLE(N, N, N, N)));
-  return ret;
-}
-template <int N>
-int32_t m128_i32(const __m128& v) {
-  float f;
-  _mm_store_ss(&f, _mm_shuffle_ps(v, v, _MM_SHUFFLE(N, N, N, N)));
-  return std::bit_cast<int32_t>(f);
-}
-template <int N>
-double m128_f64(const __m128d& v) {
-  double ret;
-  _mm_store_sd(&ret, _mm_shuffle_pd(v, v, _MM_SHUFFLE2(N, N)));
-  return ret;
-}
-template <int N>
-double m128_f64(const __m128& v) {
-  return m128_f64<N>(_mm_castps_pd(v));
-}
-template <int N>
-int64_t m128_i64(const __m128d& v) {
-  double f;
-  _mm_store_sd(&f, _mm_shuffle_pd(v, v, _MM_SHUFFLE2(N, N)));
-  return std::bit_cast<int64_t>(f);
-}
-template <int N>
-int64_t m128_i64(const __m128& v) {
-  return m128_i64<N>(_mm_castps_pd(v));
-}
-#endif
+
 
 // Similar to the C++ implementation of XMConvertFloatToHalf and
 // XMConvertHalfToFloat from DirectXMath 3.00 (pre-3.04, which switched from the

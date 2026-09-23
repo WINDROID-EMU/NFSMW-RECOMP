@@ -1,6 +1,6 @@
 /**
  * @file        rex/thread/fiber.h
- * @brief       Host OS fiber primitive for cooperative context switching
+ * @brief       Host OS fiber primitive for cooperative context switching (ARM64 Android)
  *
  * @copyright   Copyright (c) 2026 Tom Clay <tomc@tctechstuff.com>
  *              All rights reserved.
@@ -13,20 +13,16 @@
 
 #include <rex/platform.h>
 #include <cstddef>
-
-#if (REX_PLATFORM_LINUX && !REX_PLATFORM_ANDROID) || REX_PLATFORM_MAC
-#if REX_PLATFORM_MAC && !defined(_XOPEN_SOURCE)
-#define _XOPEN_SOURCE 700
-#endif
-#include <ucontext.h>
 #include <cstdint>
 #include <vector>
-#elif REX_PLATFORM_ANDROID
-#include <cstdint>
-#include <vector>
-#endif
 
 namespace rex::thread {
+
+struct Aarch64FiberContext {
+  uint64_t regs[12]{};  // x19-x28, x29 (fp), x30 (lr)
+  uint64_t sp = 0;
+  double dregs[8]{};    // d8-d15
+};
 
 /// Host OS fiber primitive.
 /// Each guest fiber gets one Fiber. Switching preserves the entire C++ call
@@ -54,21 +50,13 @@ struct Fiber {
  private:
   static thread_local Fiber* tls_current_;
 
-#if REX_PLATFORM_WIN32
-  void* handle_ = nullptr;
-  bool is_thread_fiber_ = false;
-#elif REX_PLATFORM_ANDROID
-  bool is_thread_fiber_ = false;
-  static void Trampoline() {}
-#elif REX_PLATFORM_LINUX || REX_PLATFORM_MAC
-  ucontext_t context_{};
+  Aarch64FiberContext context_{};
   std::vector<uint8_t> stack_;
   void (*entry_)(void*) = nullptr;
   void* arg_ = nullptr;
   bool is_thread_fiber_ = false;
 
   static void Trampoline();
-#endif
 };
 
 }  // namespace rex::thread

@@ -115,11 +115,7 @@ void AndroidInputDriver::SetVirtualControlsState(uint16_t buttons, float lx, flo
   virtual_lt_ = lt;
   virtual_rt_ = rt;
 
-  static uint16_t s_prev_btn = 0;
-  if (buttons != s_prev_btn || lt > 0.0f || rt > 0.0f || std::abs(lx) > 0.1f) {
-    s_prev_btn = buttons;
-    LOGI("SetVirtualControlsState: btn=0x%04x lx=%.2f ly=%.2f lt=%.2f rt=%.2f", buttons, lx, ly, lt, rt);
-  }
+  // Silenced for zero-overhead UI touches
 }
 
 X_RESULT AndroidInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
@@ -154,11 +150,8 @@ X_RESULT AndroidInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_stat
   out_state->packet_number = ++packet_number_;
   out_state->gamepad = state;
 
-  static int s_poll_count = 0;
-  if (++s_poll_count % 180 == 0 || state.buttons != 0 || state.left_trigger > 0 || state.right_trigger > 0) {
-    LOGI("GetDeviceState: id=%llu SUCCESS btn=0x%04x lx=%d ly=%d lt=%u rt=%u",
-         static_cast<unsigned long long>(id), state.buttons, state.thumb_lx, state.thumb_ly, state.left_trigger, state.right_trigger);
-  }
+  // Silenced for zero-overhead polling in release gameplay
+  // static int s_poll_count = 0;
 
   return X_ERROR_SUCCESS;
 }

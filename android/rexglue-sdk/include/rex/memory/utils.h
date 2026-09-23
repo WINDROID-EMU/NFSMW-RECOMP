@@ -118,25 +118,17 @@ bool QueryProtect(void* base_address, size_t& length, PageAccess& access_out);
 // The memory must be freed with AlignedFree.
 template <typename T>
 inline T* AlignedAlloc(size_t alignment) {
-#if REX_PLATFORM_WIN32
-  return reinterpret_cast<T*>(_aligned_malloc(sizeof(T), alignment));
-#else
   void* ptr = nullptr;
   if (posix_memalign(&ptr, alignment, sizeof(T))) {
     return nullptr;
   }
   return reinterpret_cast<T*>(ptr);
-#endif
 }
 
 // Frees memory previously allocated with AlignedAlloc.
 template <typename T>
 void AlignedFree(T* ptr) {
-#if REX_PLATFORM_WIN32
-  _aligned_free(ptr);
-#else
   free(ptr);
-#endif
 }
 
 // Opaque file mapping handle.

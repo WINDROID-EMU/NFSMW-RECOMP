@@ -55,26 +55,8 @@ class VulkanInstance {
 #include <rex/ui/vulkan/functions/instance_1_0.inc>
     // VK_KHR_surface (#1)
 #include <rex/ui/vulkan/functions/instance_khr_surface.inc>
-    // VK_KHR_xcb_surface (#6)
-#ifdef VK_USE_PLATFORM_XCB_KHR
-#include <rex/ui/vulkan/functions/instance_khr_xcb_surface.inc>
-#endif
-    // VK_KHR_wayland_surface (#7)
-#ifdef VK_USE_PLATFORM_WAYLAND_KHR
-#include <rex/ui/vulkan/functions/instance_khr_wayland_surface.inc>
-#endif
     // VK_KHR_android_surface (#9)
-#ifdef VK_USE_PLATFORM_ANDROID_KHR
 #include <rex/ui/vulkan/functions/instance_khr_android_surface.inc>
-#endif
-    // VK_KHR_win32_surface (#10)
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-#include <rex/ui/vulkan/functions/instance_khr_win32_surface.inc>
-#endif
-    // VK_EXT_metal_surface (#217)
-#ifdef VK_USE_PLATFORM_METAL_EXT
-#include <rex/ui/vulkan/functions/instance_ext_metal_surface.inc>
-#endif
     // VK_KHR_get_physical_device_properties2 (#60, promoted to 1.1)
 #include <rex/ui/vulkan/functions/instance_1_1_khr_get_physical_device_properties2.inc>
     // VK_EXT_debug_utils (#129)
@@ -90,22 +72,8 @@ class VulkanInstance {
   // Also set to true if the version of the Vulkan API they were promoted to it
   // supported (with the `ext_major_minor_` prefix rather than `ext_`).
   struct Extensions {
-    bool ext_KHR_surface = false;  // #1
-#ifdef VK_USE_PLATFORM_XCB_KHR
-    bool ext_KHR_xcb_surface = false;  // #6
-#endif
-#ifdef VK_USE_PLATFORM_WAYLAND_KHR
-    bool ext_KHR_wayland_surface = false;  // #7
-#endif
-#ifdef VK_USE_PLATFORM_ANDROID_KHR
+    bool ext_KHR_surface = false;          // #1
     bool ext_KHR_android_surface = false;  // #9
-#endif
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-    bool ext_KHR_win32_surface = false;  // #10
-#endif
-#ifdef VK_USE_PLATFORM_METAL_EXT
-    bool ext_EXT_metal_surface = false;  // #217
-#endif
     bool ext_1_1_KHR_get_physical_device_properties2 = false;  // #60
     bool ext_EXT_debug_utils = false;                          // #129
     bool ext_KHR_portability_enumeration = false;              // #395

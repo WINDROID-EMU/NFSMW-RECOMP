@@ -26,41 +26,8 @@
 #define VULKAN_HPP_NO_TO_STRING
 #endif
 
-#if REX_PLATFORM_ANDROID
 #ifndef VK_USE_PLATFORM_ANDROID_KHR
 #define VK_USE_PLATFORM_ANDROID_KHR
-#endif
-#endif
-
-#if REX_PLATFORM_GNU_LINUX
-#ifndef VK_USE_PLATFORM_XCB_KHR
-#define VK_USE_PLATFORM_XCB_KHR
-#endif
-// From the platform, never the build system: it gates members of
-// VulkanInstance::Functions, so every includer has to agree, plugins included.
-#ifndef VK_USE_PLATFORM_WAYLAND_KHR
-#define VK_USE_PLATFORM_WAYLAND_KHR
-#endif
-#include <wayland-client.h>
-#endif
-
-#if REX_PLATFORM_WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#ifndef VK_USE_PLATFORM_WIN32_KHR
-#define VK_USE_PLATFORM_WIN32_KHR
-#endif
-#endif
-
-#if REX_PLATFORM_MAC
-#ifndef VK_USE_PLATFORM_METAL_EXT
-#define VK_USE_PLATFORM_METAL_EXT
-#endif
 #endif
 
 #include <vulkan/vulkan.h>

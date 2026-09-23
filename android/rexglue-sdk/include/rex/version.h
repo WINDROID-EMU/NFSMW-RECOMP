@@ -10,8 +10,8 @@
 #define REXGLUE_VERSION_FLOOR "0.10.0"
 #define REXGLUE_VERSION_CHANNEL "dev"
 
-#define REXGLUE_BUILD_PLATFORM "linux-arm64"
-#define REXGLUE_BUILD_TIMESTAMP "20260904_1006"
+#define REXGLUE_BUILD_PLATFORM "android-arm64"
+#define REXGLUE_BUILD_TIMESTAMP "20260923_0311"
 
 // Requires REXGLUE_BUILD_CONFIG compile definition
 // Title: "[rexglue-v0.7.5.38-dev.gb27f3f74-Release]"

@@ -28,9 +28,7 @@
 #include <rex/platform.h>
 #include <rex/vec128.h>
 
-#if REX_ARCH_AMD64
-#include <xmmintrin.h>
-#endif
+
 
 namespace rex::arch {
 
@@ -128,174 +126,13 @@ struct Arm64ThreadContextMembers {
   vec128_t v[32];
 };
 
-//=============================================================================
-// AMD64 Register Definitions
-//=============================================================================
-
-#if REX_ARCH_AMD64
-
-// NOTE: The order of the registers in the enumerations must match the order in
-// the string table in host_thread_context.cc, as well as remapping tables in
-// exception handler implementations.
-
-enum class X64Register {
-  kRip,
-  kEflags,
-
-  kIntRegisterFirst,
-  // The order matches the indices in the instruction encoding, as well as the
-  // Windows CONTEXT structure.
-  kRax = kIntRegisterFirst,
-  kRcx,
-  kRdx,
-  kRbx,
-  kRsp,
-  kRbp,
-  kRsi,
-  kRdi,
-  kR8,
-  kR9,
-  kR10,
-  kR11,
-  kR12,
-  kR13,
-  kR14,
-  kR15,
-  kIntRegisterLast = kR15,
-
-  kXmm0,
-  kXmm1,
-  kXmm2,
-  kXmm3,
-  kXmm4,
-  kXmm5,
-  kXmm6,
-  kXmm7,
-  kXmm8,
-  kXmm9,
-  kXmm10,
-  kXmm11,
-  kXmm12,
-  kXmm13,
-  kXmm14,
-  kXmm15,
-};
-
-// x86-64 thread context structure members
-// Used within HostThreadContext class via #if REX_ARCH_AMD64
-struct X64ThreadContextMembers {
-  uint64_t rip;
-  uint32_t eflags;
-  union {
-    struct {
-      uint64_t rax;
-      uint64_t rcx;
-      uint64_t rdx;
-      uint64_t rbx;
-      uint64_t rsp;
-      uint64_t rbp;
-      uint64_t rsi;
-      uint64_t rdi;
-      uint64_t r8;
-      uint64_t r9;
-      uint64_t r10;
-      uint64_t r11;
-      uint64_t r12;
-      uint64_t r13;
-      uint64_t r14;
-      uint64_t r15;
-    };
-    uint64_t int_registers[16];
-  };
-  union {
-    struct {
-      vec128_t xmm0;
-      vec128_t xmm1;
-      vec128_t xmm2;
-      vec128_t xmm3;
-      vec128_t xmm4;
-      vec128_t xmm5;
-      vec128_t xmm6;
-      vec128_t xmm7;
-      vec128_t xmm8;
-      vec128_t xmm9;
-      vec128_t xmm10;
-      vec128_t xmm11;
-      vec128_t xmm12;
-      vec128_t xmm13;
-      vec128_t xmm14;
-      vec128_t xmm15;
-    };
-    vec128_t xmm_registers[16];
-  };
-};
-
-#endif  // REX_ARCH_AMD64
-
-//=============================================================================
-// Host Register Typedef
-//=============================================================================
-
-#if REX_ARCH_AMD64
-using HostRegister = X64Register;
-#elif REX_ARCH_ARM64
 using HostRegister = Arm64Register;
-#else
-enum class HostRegister {};
-#endif  // REX_ARCH
 
 //=============================================================================
 // Host Thread Context
 //=============================================================================
 
-class HostThreadContext {
- public:
-#if REX_ARCH_AMD64
-  uint64_t rip;
-  uint32_t eflags;
-  union {
-    struct {
-      uint64_t rax;
-      uint64_t rcx;
-      uint64_t rdx;
-      uint64_t rbx;
-      uint64_t rsp;
-      uint64_t rbp;
-      uint64_t rsi;
-      uint64_t rdi;
-      uint64_t r8;
-      uint64_t r9;
-      uint64_t r10;
-      uint64_t r11;
-      uint64_t r12;
-      uint64_t r13;
-      uint64_t r14;
-      uint64_t r15;
-    };
-    uint64_t int_registers[16];
-  };
-  union {
-    struct {
-      vec128_t xmm0;
-      vec128_t xmm1;
-      vec128_t xmm2;
-      vec128_t xmm3;
-      vec128_t xmm4;
-      vec128_t xmm5;
-      vec128_t xmm6;
-      vec128_t xmm7;
-      vec128_t xmm8;
-      vec128_t xmm9;
-      vec128_t xmm10;
-      vec128_t xmm11;
-      vec128_t xmm12;
-      vec128_t xmm13;
-      vec128_t xmm14;
-      vec128_t xmm15;
-    };
-    vec128_t xmm_registers[16];
-  };
-#elif REX_ARCH_ARM64
+struct HostThreadContext {
   uint64_t x[31];
   uint64_t sp;
   uint64_t pc;
@@ -303,7 +140,6 @@ class HostThreadContext {
   uint32_t fpsr;
   uint32_t fpcr;
   vec128_t v[32];
-#endif  // REX_ARCH
 
   static const char* GetRegisterName(HostRegister reg);
   std::string GetStringFromValue(HostRegister reg, bool hex) const;
@@ -441,44 +277,15 @@ class Exception {
   // - SIMD and floating-point registers (Vn).
   HostThreadContext* thread_context() const { return thread_context_; }
 
-  // Returns the program counter where the exception occurred.
   uint64_t pc() const {
-#if REX_ARCH_AMD64
-    return thread_context_->rip;
-#elif REX_ARCH_ARM64
     return thread_context_->pc;
-#else
-    assert_always();
-    return 0;
-#endif  // REX_ARCH
   }
 
   // Sets the program counter where execution will resume.
   void set_resume_pc(uint64_t pc) {
-#if REX_ARCH_AMD64
-    thread_context_->rip = pc;
-#elif REX_ARCH_ARM64
     thread_context_->pc = pc;
-#else
-    assert_always();
-#endif  // REX_ARCH
   }
 
-#if REX_ARCH_AMD64
-  // The index is relative to X64Register::kIntRegisterFirst.
-  uint64_t& ModifyIntRegister(uint32_t index) {
-    assert_true(index <= 15);
-    modified_int_registers_ |= UINT16_C(1) << index;
-    return thread_context_->int_registers[index];
-  }
-  uint16_t modified_int_registers() const { return modified_int_registers_; }
-  vec128_t& ModifyXmmRegister(uint32_t index) {
-    assert_true(index <= 15);
-    modified_xmm_registers_ |= UINT16_C(1) << index;
-    return thread_context_->xmm_registers[index];
-  }
-  uint16_t modified_xmm_registers() const { return modified_xmm_registers_; }
-#elif REX_ARCH_ARM64
   uint64_t& ModifyXRegister(uint32_t index) {
     assert_true(index <= 30);
     modified_x_registers_ |= UINT32_C(1) << index;
@@ -491,7 +298,6 @@ class Exception {
     return thread_context_->v[index];
   }
   uint32_t modified_v_registers() const { return modified_v_registers_; }
-#endif  // REX_ARCH
 
   // In case of AV, address that was read from/written to.
   uint64_t fault_address() const { return fault_address_; }
@@ -504,13 +310,8 @@ class Exception {
  private:
   Code code_ = Code::kInvalidException;
   HostThreadContext* thread_context_ = nullptr;
-#if REX_ARCH_AMD64
-  uint16_t modified_int_registers_ = 0;
-  uint16_t modified_xmm_registers_ = 0;
-#elif REX_ARCH_ARM64
   uint32_t modified_x_registers_ = 0;
   uint32_t modified_v_registers_ = 0;
-#endif  // REX_ARCH
   uint64_t fault_address_ = 0;
   AccessViolationOperation access_violation_operation_ = AccessViolationOperation::kUnknown;
 };

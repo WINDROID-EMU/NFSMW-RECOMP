@@ -67,7 +67,7 @@ class InputSystem : public system::IInputSystem {
   std::vector<InputDriver*> device_owners_;
 };
 
-/// Create a default InputSystem with SDL + NOP drivers.
+/// Create a default InputSystem with Android NDK + NOP drivers.
 /// In tool mode, only the NOP driver is added.
 std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode);
 

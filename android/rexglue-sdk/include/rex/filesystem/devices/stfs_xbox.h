@@ -1,3 +1,4 @@
+
 /**
  ******************************************************************************
  * Xenia : Xbox 360 Emulator Research Project                                 *
@@ -40,11 +41,7 @@ inline uint64_t decode_fat_timestamp(const uint32_t date, const uint32_t time) {
   tm.tm_sec = (0x001F & time) << 1;  // the value stored in 2-seconds intervals
   tm.tm_isdst = 0;
 
-#if REX_PLATFORM_WIN32
-  time_t timet = _mkgmtime(&tm);
-#else
   time_t timet = timegm(&tm);
-#endif
 
   if (timet == -1) {
     return 0;

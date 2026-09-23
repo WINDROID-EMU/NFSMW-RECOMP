@@ -144,19 +144,32 @@ void android_main(struct android_app* state) {
   const char* external_path = state->activity->externalDataPath ? state->activity->externalDataPath : "";
   rex::vfs::android::AndroidStorage::Initialize(internal_path, external_path);
 
-  // Set default baseline flags for Android mobile platform
+  // Set default baseline flags for Android mobile platform (Adreno 650 TBR / GMEM optimized)
   rex::cvar::SetFlagByName("gpu_backend", "vulkan");
   rex::cvar::SetFlagByName("gpu_plugin", "xenos");
   rex::cvar::SetFlagByName("render_target_path_d3d12", "rtv");
+  rex::cvar::SetFlagByName("render_target_path_vulkan", "fbo");
   rex::cvar::SetFlagByName("readback_resolve", "fast");
-  rex::cvar::SetFlagByName("async_shader_compilation", "false");
+  rex::cvar::SetFlagByName("async_shader_compilation", "true");
+  rex::cvar::SetFlagByName("vulkan_async_skip_incomplete_frames", "false");
+  rex::cvar::SetFlagByName("vulkan_submit_on_primary_buffer_end", "false");
+  rex::cvar::SetFlagByName("vulkan_dynamic_rendering", "true");
+  rex::cvar::SetFlagByName("native_2x_msaa", "false");
+  rex::cvar::SetFlagByName("gamma_render_target_as_unorm16", "false");
+  rex::cvar::SetFlagByName("depth_transfer_not_equal_test", "false");
+  rex::cvar::SetFlagByName("clear_memory_page_state", "false");
+  rex::cvar::SetFlagByName("texture_cache_memory_limit_render_to_texture", "96");
+  rex::cvar::SetFlagByName("texture_cache_memory_limit_soft", "512");
   rex::cvar::SetFlagByName("vulkan_pipeline_creation_threads", "4");
   rex::cvar::SetFlagByName("store_shaders", "true");
   rex::cvar::SetFlagByName("vsync", "true");
   rex::cvar::SetFlagByName("mnk_mode", "false");
-  rex::cvar::SetFlagByName("video_mode_width", "1920");
-  rex::cvar::SetFlagByName("video_mode_height", "1080");
+
+  // 1280x720 Native Xbox 360 resolution fits within Adreno 650 8MB GMEM on-chip tile memory
+  rex::cvar::SetFlagByName("video_mode_width", "1280");
+  rex::cvar::SetFlagByName("video_mode_height", "720");
   rex::cvar::SetFlagByName("resolution_scale", "1");
+  rex::cvar::SetFlagByName("anisotropic_override", "2");
 
   // Adreno performance & logging optimizations
   rex::cvar::SetFlagByName("vulkan_validation_enabled", "false");
@@ -166,6 +179,14 @@ void android_main(struct android_app* state) {
   rex::cvar::SetFlagByName("log_file", "");
   rex::cvar::SetFlagByName("log_noisy", "false");
   rex::cvar::SetFlagByName("log_verbose", "false");
+
+  // Optional user overrides (nfsmw.toml in storage directory)
+  if (external_path && external_path[0]) {
+    rex::cvar::LoadConfig(std::filesystem::path(external_path) / "nfsmw.toml");
+  }
+  if (internal_path && internal_path[0]) {
+    rex::cvar::LoadConfig(std::filesystem::path(internal_path) / "nfsmw.toml");
+  }
 
   rex::InitLoggingEarly();
 

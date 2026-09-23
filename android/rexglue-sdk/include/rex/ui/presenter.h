@@ -34,18 +34,7 @@
 #include <rex/ui/surface.h>
 #include <rex/ui/ui_drawer.h>
 
-#if REX_PLATFORM_WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <dxgi.h>
-#include <windows.h>
 
-#include <wrl/client.h>
-#endif  // XE_PLATFORM
 
 namespace rex {
 namespace ui {
@@ -1002,55 +991,7 @@ class Presenter {
   // presentation requests to prevent adding arbitrary amounts of latency to it.
   // On Android and GTK, this is not needed, the frame rate of draw events is
   // limited to the display refresh rate internally.
-#if REX_PLATFORM_WIN32
-  static Microsoft::WRL::ComPtr<IDXGIOutput> GetDXGIOutputForMonitor(IDXGIFactory1* factory,
-                                                                     HMONITOR monitor);
-  bool AreDXGIUITicksWaitable(
-      [[maybe_unused]] const std::unique_lock<std::mutex>& dxgi_ui_tick_lock) {
-    return dxgi_ui_ticks_needed_ && !dxgi_ui_tick_thread_shutdown_ && dxgi_ui_tick_output_;
-  }
-  void DXGIUITickThread();
 
-  // Accessible only from the UI thread, to avoid updating monitor-dependent
-  // information such as the DXGI output if the monitor hasn't actually been
-  // changed in the current state change (such as window positioning changes).
-  HMONITOR surface_win32_monitor_ = nullptr;
-
-  // Requiring the lowest version of DXGI for IDXGIOutput::WaitForVBlank, which
-  // is available even on Windows Vista, but for IDXGIFactory1::IsCurrent,
-  // DXGI 1.1 is needed (available starting from Windows 7; also mixing DXGI 1.0
-  // and 1.1+ in the Direct3D 12 code is not supported, see CreateDXGIFactory on
-  // MSDN). The factory is created when it's needed, and may be released and
-  // recreated when it's not current anymore and that becomes relevant.
-  Microsoft::WRL::ComPtr<IDXGIFactory1> dxgi_ui_tick_factory_;
-
-  // Accessible only from the UI thread, though the value is taken from the
-  // tick-mutex-protected variable.
-  uint64_t dxgi_ui_tick_last_draw_ = 0;
-
-  std::mutex dxgi_ui_tick_mutex_;
-  uint64_t dxgi_ui_tick_last_vblank_ = 1;
-  // If output is null or shutdown is true, the signal may not be sent, either
-  // don't limit the frame rate in this case (an exceptional situation, such as
-  // a failure to find the output in DXGI), or don't draw at all if the window
-  // was removed from a connected monitor.
-  Microsoft::WRL::ComPtr<IDXGIOutput> dxgi_ui_tick_output_;
-  // To avoid allocating processing resources to the thread when nothing needs
-  // the ticks (not drawing the UI), the thread waits for vertical blanking
-  // intervals only when the UI drawing ticks are needed, and sleeping waiting
-  // for the control condition variable signals otherwise. Modifiable only from
-  // the UI thread, so readable by it without locking the mutex.
-  bool dxgi_ui_ticks_needed_ = false;
-  // The shutdown flag is modifiable only from the UI thread.
-  bool dxgi_ui_tick_thread_shutdown_ = false;
-  bool dxgi_ui_tick_force_requested_ = false;
-
-  std::condition_variable dxgi_ui_tick_control_condition_;
-  // May be signaled by guest output refreshing.
-  std::condition_variable dxgi_ui_tick_signal_condition_;
-
-  std::thread dxgi_ui_tick_thread_;
-#endif  // XE_PLATFORM
 };
 
 }  // namespace ui

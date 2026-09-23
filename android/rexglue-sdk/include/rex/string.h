@@ -21,26 +21,16 @@
 #include <rex/platform.h>
 #include <rex/string/utf8.h>
 
-#if !REX_PLATFORM_WIN32
 #include <strings.h>
-#endif
 
 namespace rex::string {
 
 inline int compare_case(const char* string1, const char* string2) {
-#if REX_PLATFORM_WIN32
-  return _stricmp(string1, string2);
-#else
   return strcasecmp(string1, string2);
-#endif
 }
 
 inline int compare_case_n(const char* string1, const char* string2, size_t count) {
-#if REX_PLATFORM_WIN32
-  return _strnicmp(string1, string2, count);
-#else
   return strncasecmp(string1, string2, count);
-#endif
 }
 
 inline constexpr std::string_view kWhitespace = " \t\r\n";
@@ -65,11 +55,7 @@ inline std::string trim_string(std::string_view sv, std::string_view chars = kWh
 
 // Caller must free() the returned pointer.
 inline char* duplicate(const char* source) {
-#if REX_PLATFORM_WIN32
-  return _strdup(source);
-#else
   return strdup(source);
-#endif
 }
 
 inline size_t copy_truncating(char* dest, const std::string_view source, size_t dest_buffer_count) {

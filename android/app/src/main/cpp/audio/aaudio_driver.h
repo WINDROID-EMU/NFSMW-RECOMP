@@ -5,7 +5,6 @@
 #include <rex/thread.h>
 #include <aaudio/AAudio.h>
 
-#include <mutex>
 #include <vector>
 #include <atomic>
 #include <memory>
@@ -38,13 +37,12 @@ class AndroidAAudioDriver final : public AudioDriver {
   AAudioStream* stream_ = nullptr;
   std::atomic<bool> is_running_{false};
 
-  // Ring buffer for stereo float samples (48kHz)
-  static constexpr size_t kRingBufferCapacityFrames = 8192;
+  // Lock-Free SPSC Ring Buffer for stereo float samples (48kHz)
+  static constexpr size_t kRingBufferSampleCapacity = 16384; // 8192 stereo frames (power of 2)
   std::vector<float> ring_buffer_;
-  size_t read_pos_ = 0;
-  size_t write_pos_ = 0;
+  std::atomic<size_t> write_pos_{0};
+  std::atomic<size_t> read_pos_{0};
   size_t consumed_frames_ = 0;
-  std::mutex buffer_mutex_;
 };
 
 class AndroidAAudioSystem final : public AudioSystem {

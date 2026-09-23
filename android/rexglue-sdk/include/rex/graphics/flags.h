@@ -37,7 +37,6 @@ REXCVAR_DECLARE(bool, depth_float24_round);
 REXCVAR_DECLARE(bool, depth_float24_convert_in_pixel_shader);
 REXCVAR_DECLARE(bool, depth_transfer_not_equal_test);
 REXCVAR_DECLARE(bool, native_stencil_value_output);
-REXCVAR_DECLARE(bool, native_stencil_value_output_d3d12_intel);
 REXCVAR_DECLARE(bool, gamma_render_target_as_unorm16);
 REXCVAR_DECLARE(bool, native_2x_msaa);
 REXCVAR_DECLARE(bool, snorm16_render_target_full_range);
@@ -90,20 +89,6 @@ REXCVAR_DECLARE(bool, vulkan_readback_resolve);
 REXCVAR_DECLARE(bool, vulkan_readback_memexport);
 #endif  // REX_HAS_VULKAN
 
-#if REX_HAS_D3D12
-REXCVAR_DECLARE(bool, dxbc_switch);
-REXCVAR_DECLARE(bool, dxbc_source_map);
-REXCVAR_DECLARE(bool, d3d12_bindless);
-REXCVAR_DECLARE(bool, d3d12_submit_on_primary_buffer_end);
-REXCVAR_DECLARE(bool, d3d12_dxbc_disasm);
-REXCVAR_DECLARE(bool, d3d12_dxbc_disasm_dxilconv);
-REXCVAR_DECLARE(int32_t, d3d12_pipeline_creation_threads);
-REXCVAR_DECLARE(bool, d3d12_tessellation_wireframe);
-REXCVAR_DECLARE(bool, d3d12_tiled_shared_memory);
-REXCVAR_DECLARE(std::string, render_target_path_d3d12);
-// Legacy backend compatibility aliases for shared readback controls.
-REXCVAR_DECLARE(bool, d3d12_readback_memexport);
-REXCVAR_DECLARE(bool, d3d12_readback_resolve);
-#endif  // REX_HAS_D3D12
+
 
 #define XE_GPU_FINE_GRAINED_DRAW_SCOPES 1
