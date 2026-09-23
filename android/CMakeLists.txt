@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.22.1)
 project(nfsmw LANGUAGES CXX C)
 
 # Restrict parallel jobs for Ninja to prevent Out-Of-Memory on CI runners
-set_property(GLOBAL PROPERTY JOB_POOLS compile_jobs=2 link_jobs=1)
+set_property(GLOBAL PROPERTY JOB_POOLS compile_jobs=1 link_jobs=1)
+string(REGEX REPLACE "(^| )-g([0-9]?| )" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g0")
 set(CMAKE_JOB_POOL_COMPILE compile_jobs)
 set(CMAKE_JOB_POOL_LINK link_jobs)
 

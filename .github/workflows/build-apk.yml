@@ -142,7 +142,7 @@ jobs:
       - name: Build Android APK with Gradle
         run: |
           cd android
-          ./gradlew ${{ steps.build_config.outputs.gradle_task }} --no-daemon -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m" --stacktrace
+          ./gradlew ${{ steps.build_config.outputs.gradle_task }} --no-daemon -Dorg.gradle.jvmargs="-Xmx1536m -XX:+UseSerialGC" --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4

@@ -23,7 +23,7 @@ android {
                 arguments "-DANDROID_STL=c++_shared",
                           "-DANDROID_PLATFORM=android-26",
                           "-DCMAKE_BUILD_TYPE=Release"
-                cppFlags "-std=c++23", "-fexceptions", "-frtti", "-O3", "-march=armv8-a", "-DNDEBUG"
+                cppFlags "-std=c++23", "-fexceptions", "-frtti", "-O3", "-march=armv8-a", "-DNDEBUG", "-g0"
             }
         }
     }
