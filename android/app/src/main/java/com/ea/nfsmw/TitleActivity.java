@@ -40,20 +40,23 @@ public class TitleActivity extends Activity {
     private static final String KEY_RESOLUTION = "cfg_resolution";
     private static final String KEY_RESOLUTION_SCALE = "cfg_resolution_scale";
     private static final String KEY_VSYNC = "cfg_vsync";
-    private static final String KEY_MAX_FPS = "cfg_max_fps";
-    private static final String KEY_PRESENT_EFFECT = "cfg_present_effect";
-    private static final String KEY_SHARPNESS = "cfg_sharpness";
+    private static final String KEY_STRETCH_SCREEN = "cfg_stretch_screen";
     private static final String KEY_EDRAM_PATH = "cfg_edram_path";
     private static final String KEY_PIPELINE_THREADS = "cfg_pipeline_threads";
     private static final String KEY_ASYNC_SHADERS = "cfg_async_shaders";
+    private static final String KEY_ASYNC_SKIP = "cfg_async_skip";
+    private static final String KEY_TEXTURE_CACHE_LIMIT = "cfg_texture_cache_limit";
+    private static final String KEY_GPU_3D_TO_2D = "cfg_gpu_3d_to_2d";
     private static final String KEY_READBACK_RESOLVE = "cfg_readback_resolve";
     private static final String KEY_ANISOTROPIC = "cfg_anisotropic";
     private static final String KEY_ANTIALIASING = "cfg_antialiasing";
+    private static final String KEY_NATIVE_MSAA = "cfg_native_msaa";
     private static final String KEY_AUDIO_MUTE = "cfg_audio_mute";
     private static final String KEY_MNK_MODE = "cfg_mnk_mode";
     private static final String KEY_BLACK_EDITION = "cfg_black_edition";
     private static final String KEY_GRANT_PRIVILEGES = "cfg_grant_privileges";
     private static final String KEY_GAMERTAG = "cfg_gamertag";
+    private static final String KEY_LOG_LEVEL = "cfg_log_level";
     private static final String KEY_GAME_SPEED = "cfg_game_speed";
 
     private static final int REQ_CODE_FOLDER = 1001;
@@ -505,7 +508,7 @@ public class TitleActivity extends Activity {
 
     private void showSettingsDialog() {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_settings, null);
-        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
                 .setView(dialogView)
                 .create();
 
@@ -518,25 +521,27 @@ public class TitleActivity extends Activity {
         // Spinners
         Spinner spResolution = dialogView.findViewById(R.id.sp_resolution);
         Spinner spResolutionScale = dialogView.findViewById(R.id.sp_resolution_scale);
-        Spinner spMaxFps = dialogView.findViewById(R.id.sp_max_fps);
-        Spinner spPresentEffect = dialogView.findViewById(R.id.sp_present_effect);
         Spinner spEdramPath = dialogView.findViewById(R.id.sp_edram_path);
+        Spinner spPipelineThreads = dialogView.findViewById(R.id.sp_pipeline_threads);
+        Spinner spTextureCacheLimit = dialogView.findViewById(R.id.sp_texture_cache_limit);
         Spinner spAnisotropic = dialogView.findViewById(R.id.sp_anisotropic);
         Spinner spAntialiasing = dialogView.findViewById(R.id.sp_antialiasing);
-        Spinner spPipelineThreads = dialogView.findViewById(R.id.sp_pipeline_threads);
+        Spinner spLogLevel = dialogView.findViewById(R.id.sp_log_level);
 
         // Switches
         Switch swVsync = dialogView.findViewById(R.id.sw_vsync);
+        Switch swStretchScreen = dialogView.findViewById(R.id.sw_stretch_screen);
         Switch swAsyncShaders = dialogView.findViewById(R.id.sw_async_shaders);
+        Switch swAsyncSkip = dialogView.findViewById(R.id.sw_async_skip);
+        Switch swGpu3dTo2d = dialogView.findViewById(R.id.sw_gpu_3d_to_2d);
         Switch swReadbackResolve = dialogView.findViewById(R.id.sw_readback_resolve);
+        Switch swNativeMsaa = dialogView.findViewById(R.id.sw_native_msaa);
         Switch swAudioMute = dialogView.findViewById(R.id.sw_audio_mute);
         Switch swMnkMode = dialogView.findViewById(R.id.sw_mnk_mode);
         Switch swBlackEdition = dialogView.findViewById(R.id.sw_black_edition);
         Switch swGrantPrivileges = dialogView.findViewById(R.id.sw_grant_privileges);
 
         // SeekBars & Text
-        SeekBar sbSharpness = dialogView.findViewById(R.id.sb_sharpness);
-        TextView tvSharpness = dialogView.findViewById(R.id.tv_sharpness_label);
         SeekBar sbGameSpeed = dialogView.findViewById(R.id.sb_game_speed);
         TextView tvGameSpeed = dialogView.findViewById(R.id.tv_speed_label);
         EditText etGamertag = dialogView.findViewById(R.id.et_gamertag);
@@ -548,33 +553,33 @@ public class TitleActivity extends Activity {
         final String[] scaleLabels = {"1x - Nativo (Mais rápido)", "2x - 1440p (Alta Nitidez)", "3x - 4K"};
         final int[] scaleValues = {1, 2, 3};
 
-        final String[] fpsLabels = {"30 FPS", "60 FPS (Recomendado)", "Sem limite (0)"};
-        final int[] fpsValues = {30, 60, 0};
-
-        final String[] effectLabels = {"Bilinear (Padrão)", "CAS (AMD Sharpening)", "FSR (AMD FidelityFX)"};
-        final String[] effectValues = {"bilinear", "cas", "fsr"};
-
-        final String[] edramLabels = {"rtv (Host Render Targets - Rápido)", "rov (Pixel Shader Interlock - Lento)"};
+        final String[] edramLabels = {"rtv (FBO Host - Rápido / Recomendado)", "rov (Pixel Shader Interlock - Lento)"};
         final String[] edramValues = {"rtv", "rov"};
 
-        final String[] anisoLabels = {"Desativado (0)", "1x", "2x", "4x", "8x", "16x"};
-        final int[] anisoValues = {0, 1, 2, 3, 4, 5};
+        final String[] threadLabels = {"1 Thread (Economia de Bateria)", "2 Threads (Recomendado - Frio & Estável)", "4 Threads (Compilação Rápida)", "Automático (-1)"};
+        final int[] threadValues = {1, 2, 4, -1};
 
-        final String[] aaLabels = {"Desativado (none)", "FXAA", "FXAA Extreme"};
+        final String[] cacheLabels = {"256 MB (Celulares 4GB RAM - Evita OOM)", "384 MB (Equilibrado)", "512 MB (Recomendado / Padrão)", "768 MB (Celulares 8GB+ RAM)"};
+        final int[] cacheValues = {256, 384, 512, 768};
+
+        final String[] anisoLabels = {"Desativado (0x)", "1x", "2x (Recomendado)", "4x", "8x", "16x"};
+        final int[] anisoValues = {0, 1, 2, 4, 8, 16};
+
+        final String[] aaLabels = {"Desativado (none)", "FXAA (Recomendado)", "FXAA Extreme"};
         final String[] aaValues = {"none", "fxaa", "fxaa_extreme"};
 
-        final String[] threadLabels = {"2 Threads (Recomendado - Frio & Bateria)", "4 Threads (Compilação Rápida)", "Automático (-1)"};
-        final int[] threadValues = {2, 4, -1};
+        final String[] logLabels = {"Erro (Desempenho Máximo / Menos I/O)", "Aviso (Warning)", "Informação (Info - Padrão)", "Depuração (Debug)"};
+        final String[] logValues = {"error", "warning", "info", "debug"};
 
         // Set adapters
         setupSpinner(spResolution, resLabels);
         setupSpinner(spResolutionScale, scaleLabels);
-        setupSpinner(spMaxFps, fpsLabels);
-        setupSpinner(spPresentEffect, effectLabels);
         setupSpinner(spEdramPath, edramLabels);
+        setupSpinner(spPipelineThreads, threadLabels);
+        setupSpinner(spTextureCacheLimit, cacheLabels);
         setupSpinner(spAnisotropic, anisoLabels);
         setupSpinner(spAntialiasing, aaLabels);
-        setupSpinner(spPipelineThreads, threadLabels);
+        setupSpinner(spLogLevel, logLabels);
 
         // Load saved values
         String curRes = prefs.getString(KEY_RESOLUTION, "720p");
@@ -583,42 +588,35 @@ public class TitleActivity extends Activity {
         int curScale = prefs.getInt(KEY_RESOLUTION_SCALE, 1);
         spResolutionScale.setSelection(findIntIndex(scaleValues, curScale, 0));
 
-        int curFps = prefs.getInt(KEY_MAX_FPS, 60);
-        spMaxFps.setSelection(findIntIndex(fpsValues, curFps, 1));
-
-        String curEffect = prefs.getString(KEY_PRESENT_EFFECT, "bilinear");
-        spPresentEffect.setSelection(findStringIndex(effectValues, curEffect, 0));
-
         String curEdram = prefs.getString(KEY_EDRAM_PATH, "rtv");
         spEdramPath.setSelection(findStringIndex(edramValues, curEdram, 0));
 
-        int curAniso = prefs.getInt(KEY_ANISOTROPIC, 0);
-        spAnisotropic.setSelection(findIntIndex(anisoValues, curAniso, 0));
-
         int curThreads = prefs.getInt(KEY_PIPELINE_THREADS, 2);
-        spPipelineThreads.setSelection(findIntIndex(threadValues, curThreads, 0));
+        spPipelineThreads.setSelection(findIntIndex(threadValues, curThreads, 1));
+
+        int curCache = prefs.getInt(KEY_TEXTURE_CACHE_LIMIT, 512);
+        spTextureCacheLimit.setSelection(findIntIndex(cacheValues, curCache, 2));
+
+        int curAniso = prefs.getInt(KEY_ANISOTROPIC, 2);
+        spAnisotropic.setSelection(findIntIndex(anisoValues, curAniso, 2));
 
         String curAa = prefs.getString(KEY_ANTIALIASING, "none");
         spAntialiasing.setSelection(findStringIndex(aaValues, curAa, 0));
 
+        String curLog = prefs.getString(KEY_LOG_LEVEL, "info");
+        spLogLevel.setSelection(findStringIndex(logValues, curLog, 2));
+
         swVsync.setChecked(prefs.getBoolean(KEY_VSYNC, true));
+        swStretchScreen.setChecked(prefs.getBoolean(KEY_STRETCH_SCREEN, true));
         swAsyncShaders.setChecked(prefs.getBoolean(KEY_ASYNC_SHADERS, true));
+        swAsyncSkip.setChecked(prefs.getBoolean(KEY_ASYNC_SKIP, false));
+        swGpu3dTo2d.setChecked(prefs.getBoolean(KEY_GPU_3D_TO_2D, true));
         swReadbackResolve.setChecked(prefs.getBoolean(KEY_READBACK_RESOLVE, false));
+        swNativeMsaa.setChecked(prefs.getBoolean(KEY_NATIVE_MSAA, false));
         swAudioMute.setChecked(prefs.getBoolean(KEY_AUDIO_MUTE, false));
         swMnkMode.setChecked(prefs.getBoolean(KEY_MNK_MODE, false));
         swBlackEdition.setChecked(prefs.getBoolean(KEY_BLACK_EDITION, true));
         swGrantPrivileges.setChecked(prefs.getBoolean(KEY_GRANT_PRIVILEGES, false));
-
-        int curSharpness = prefs.getInt(KEY_SHARPNESS, 0);
-        sbSharpness.setProgress(curSharpness);
-        tvSharpness.setText("Nitidez CAS / FSR: " + curSharpness + "%");
-        sbSharpness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvSharpness.setText("Nitidez CAS / FSR: " + progress + "%");
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
 
         int curSpeed = prefs.getInt(KEY_GAME_SPEED, 100);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -648,25 +646,28 @@ public class TitleActivity extends Activity {
         Button btnReset = dialogView.findViewById(R.id.btn_reset_defaults);
         if (btnReset != null) {
             btnReset.setOnClickListener(v -> {
-                spResolution.setSelection(0); // 480p
-                spResolutionScale.setSelection(0); // 1x
-                spMaxFps.setSelection(1); // 60 FPS
-                spPresentEffect.setSelection(0); // bilinear
-                spEdramPath.setSelection(0); // rtv
-                spAnisotropic.setSelection(0); // 0
-                spAntialiasing.setSelection(0); // none
-                spPipelineThreads.setSelection(0); // 2 threads
+                spResolution.setSelection(2);
+                spResolutionScale.setSelection(0);
+                spEdramPath.setSelection(0);
+                spPipelineThreads.setSelection(1);
+                spTextureCacheLimit.setSelection(2);
+                spAnisotropic.setSelection(2);
+                spAntialiasing.setSelection(0);
+                spLogLevel.setSelection(2);
                 swVsync.setChecked(true);
+                swStretchScreen.setChecked(true);
                 swAsyncShaders.setChecked(true);
+                swAsyncSkip.setChecked(false);
+                swGpu3dTo2d.setChecked(true);
                 swReadbackResolve.setChecked(false);
+                swNativeMsaa.setChecked(false);
                 swAudioMute.setChecked(false);
                 swMnkMode.setChecked(false);
                 swBlackEdition.setChecked(true);
                 swGrantPrivileges.setChecked(false);
-                sbSharpness.setProgress(0);
                 sbGameSpeed.setProgress(100);
                 etGamertag.setText("Player");
-                Toast.makeText(TitleActivity.this, "Padrões de alto desempenho para Android restaurados.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(TitleActivity.this, "Padrões otimizados para Android restaurados.", Toast.LENGTH_SHORT).show();
             });
         }
 
@@ -676,21 +677,24 @@ public class TitleActivity extends Activity {
             btnSave.setOnClickListener(v -> {
                 String selRes = resValues[spResolution.getSelectedItemPosition()];
                 int selScale = scaleValues[spResolutionScale.getSelectedItemPosition()];
-                int selFps = fpsValues[spMaxFps.getSelectedItemPosition()];
-                String selEffect = effectValues[spPresentEffect.getSelectedItemPosition()];
                 String selEdram = edramValues[spEdramPath.getSelectedItemPosition()];
+                int selThreads = threadValues[spPipelineThreads.getSelectedItemPosition()];
+                int selCache = cacheValues[spTextureCacheLimit.getSelectedItemPosition()];
                 int selAniso = anisoValues[spAnisotropic.getSelectedItemPosition()];
                 String selAa = aaValues[spAntialiasing.getSelectedItemPosition()];
-                int selThreads = threadValues[spPipelineThreads.getSelectedItemPosition()];
+                String selLog = logValues[spLogLevel.getSelectedItemPosition()];
 
                 boolean selVsync = swVsync.isChecked();
+                boolean selStretchScreen = swStretchScreen.isChecked();
                 boolean selAsyncShaders = swAsyncShaders.isChecked();
+                boolean selAsyncSkip = swAsyncSkip.isChecked();
+                boolean selGpu3dTo2d = swGpu3dTo2d.isChecked();
                 boolean selReadback = swReadbackResolve.isChecked();
+                boolean selNativeMsaa = swNativeMsaa.isChecked();
                 boolean selAudioMute = swAudioMute.isChecked();
                 boolean selMnk = swMnkMode.isChecked();
                 boolean selBlack = swBlackEdition.isChecked();
                 boolean selGrant = swGrantPrivileges.isChecked();
-                int selSharpness = sbSharpness.getProgress();
                 int selSpeed = Math.max(20, sbGameSpeed.getProgress());
                 String selGamertag = etGamertag.getText().toString().trim();
                 if (selGamertag.isEmpty()) selGamertag = "Player";
@@ -698,20 +702,23 @@ public class TitleActivity extends Activity {
                 prefs.edit()
                         .putString(KEY_RESOLUTION, selRes)
                         .putInt(KEY_RESOLUTION_SCALE, selScale)
-                        .putInt(KEY_MAX_FPS, selFps)
-                        .putString(KEY_PRESENT_EFFECT, selEffect)
                         .putString(KEY_EDRAM_PATH, selEdram)
-                        .putInt(KEY_ANISOTROPIC, selAniso)
                         .putInt(KEY_PIPELINE_THREADS, selThreads)
+                        .putInt(KEY_TEXTURE_CACHE_LIMIT, selCache)
+                        .putInt(KEY_ANISOTROPIC, selAniso)
                         .putString(KEY_ANTIALIASING, selAa)
+                        .putString(KEY_LOG_LEVEL, selLog)
                         .putBoolean(KEY_VSYNC, selVsync)
+                        .putBoolean(KEY_STRETCH_SCREEN, selStretchScreen)
                         .putBoolean(KEY_ASYNC_SHADERS, selAsyncShaders)
+                        .putBoolean(KEY_ASYNC_SKIP, selAsyncSkip)
+                        .putBoolean(KEY_GPU_3D_TO_2D, selGpu3dTo2d)
                         .putBoolean(KEY_READBACK_RESOLVE, selReadback)
+                        .putBoolean(KEY_NATIVE_MSAA, selNativeMsaa)
                         .putBoolean(KEY_AUDIO_MUTE, selAudioMute)
                         .putBoolean(KEY_MNK_MODE, selMnk)
                         .putBoolean(KEY_BLACK_EDITION, selBlack)
                         .putBoolean(KEY_GRANT_PRIVILEGES, selGrant)
-                        .putInt(KEY_SHARPNESS, selSharpness)
                         .putInt(KEY_GAME_SPEED, selSpeed)
                         .putString(KEY_GAMERTAG, selGamertag)
                         .apply();
@@ -731,21 +738,24 @@ public class TitleActivity extends Activity {
 
             String res = prefs.getString(KEY_RESOLUTION, "720p");
             int scale = prefs.getInt(KEY_RESOLUTION_SCALE, 1);
-            int fps = prefs.getInt(KEY_MAX_FPS, 60);
             boolean vsync = prefs.getBoolean(KEY_VSYNC, true);
-            String effect = prefs.getString(KEY_PRESENT_EFFECT, "bilinear");
-            int sharpness = prefs.getInt(KEY_SHARPNESS, 0);
+            boolean stretchScreen = prefs.getBoolean(KEY_STRETCH_SCREEN, true);
             String edram = prefs.getString(KEY_EDRAM_PATH, "rtv");
             boolean asyncShaders = prefs.getBoolean(KEY_ASYNC_SHADERS, true);
+            boolean asyncSkip = prefs.getBoolean(KEY_ASYNC_SKIP, false);
             int pipelineThreads = prefs.getInt(KEY_PIPELINE_THREADS, 2);
+            int textureCacheLimit = prefs.getInt(KEY_TEXTURE_CACHE_LIMIT, 512);
+            boolean gpu3dTo2d = prefs.getBoolean(KEY_GPU_3D_TO_2D, true);
             boolean readback = prefs.getBoolean(KEY_READBACK_RESOLVE, false);
-            int aniso = prefs.getInt(KEY_ANISOTROPIC, 0);
+            int aniso = prefs.getInt(KEY_ANISOTROPIC, 2);
             String aa = prefs.getString(KEY_ANTIALIASING, "none");
+            boolean nativeMsaa = prefs.getBoolean(KEY_NATIVE_MSAA, false);
             boolean mute = prefs.getBoolean(KEY_AUDIO_MUTE, false);
             boolean mnk = prefs.getBoolean(KEY_MNK_MODE, false);
             boolean black = prefs.getBoolean(KEY_BLACK_EDITION, true);
             boolean grant = prefs.getBoolean(KEY_GRANT_PRIVILEGES, false);
             String gamertag = prefs.getString(KEY_GAMERTAG, "Player");
+            String logLevel = prefs.getString(KEY_LOG_LEVEL, "info");
             int speed = prefs.getInt(KEY_GAME_SPEED, 100);
 
             int width = 1280;
@@ -759,47 +769,52 @@ public class TitleActivity extends Activity {
             }
 
             StringBuilder toml = new StringBuilder();
-            toml.append("# ============================================================================\n");
-            toml.append("#  NFSMW Recompiled - Android Configuration (Gerado pelo TitleActivity)\n");
-            toml.append("# ============================================================================\n\n");
+            toml.append("# ============================================================================").append((char) 10);
+            toml.append("#  NFSMW Recompiled - Android Configuration (Gerado pelo TitleActivity)").append((char) 10);
+            toml.append("# ============================================================================").append((char) 10).append((char) 10);
 
             String vulkanEdram = "rov".equalsIgnoreCase(edram) || "fsi".equalsIgnoreCase(edram) ? "fsi" : "fbo";
-            toml.append("render_target_path_d3d12 = \"").append(edram).append("\"\n");
-            toml.append("render_target_path_vulkan = \"").append(vulkanEdram).append("\"\n");
-            toml.append("vulkan_async_skip_incomplete_frames = false\n");
-            toml.append("vulkan_submit_on_primary_buffer_end = false\n");
-            toml.append("vulkan_dynamic_rendering = true\n");
-            toml.append("gpu_backend = \"vulkan\"\n");
-            toml.append("gpu = \"xenos\"\n\n");
+            toml.append("render_target_path_d3d12 = ").append((char) 34).append(edram).append((char) 34).append((char) 10);
+            toml.append("render_target_path_vulkan = ").append((char) 34).append(vulkanEdram).append((char) 34).append((char) 10);
+            toml.append("vulkan_async_skip_incomplete_frames = ").append(asyncSkip ? "true" : "false").append((char) 10);
+            toml.append("vulkan_submit_on_primary_buffer_end = false").append((char) 10);
+            toml.append("vulkan_dynamic_rendering = true").append((char) 10);
+            toml.append("gpu_backend = ").append((char) 34).append("vulkan").append((char) 34).append((char) 10);
+            toml.append("gpu = ").append((char) 34).append("xenos").append((char) 34).append((char) 10).append((char) 10);
 
-            toml.append("video_mode_width = ").append(width).append("\n");
-            toml.append("video_mode_height = ").append(height).append("\n");
-            toml.append("resolution = \"").append(res).append("\"\n");
-            toml.append("resolution_scale = ").append(scale).append("\n");
-            toml.append("vsync = ").append(vsync ? "true" : "false").append("\n");
-            toml.append("max_fps = ").append(fps).append("\n");
-            toml.append("fullscreen = true\n\n");
+            toml.append("video_mode_width = ").append(width).append((char) 10);
+            toml.append("video_mode_height = ").append(height).append((char) 10);
+            toml.append("resolution = ").append((char) 34).append(res).append((char) 34).append((char) 10);
+            toml.append("resolution_scale = ").append(scale).append((char) 10);
+            toml.append("vsync = ").append(vsync ? "true" : "false").append((char) 10);
+            toml.append("fullscreen = true").append((char) 10);
+            toml.append("present_letterbox = ").append(!stretchScreen ? "true" : "false").append((char) 10).append((char) 10);
 
-            toml.append("present_effect = \"").append(effect).append("\"\n");
-            toml.append("present_cas_additional_sharpness = ").append(String.format(java.util.Locale.US, "%.2f", sharpness / 100.0f)).append("\n");
-            toml.append("anisotropic_override = ").append(aniso).append("\n");
-            toml.append("swap_post_effect = \"").append(aa).append("\"\n\n");
+            toml.append("present_effect = ").append((char) 34).append("bilinear").append((char) 34).append((char) 10);
+            toml.append("anisotropic_override = ").append(aniso).append((char) 10);
+            toml.append("swap_post_effect = ").append((char) 34).append(aa).append((char) 34).append((char) 10).append((char) 10);
 
-            toml.append("async_shader_compilation = ").append(asyncShaders ? "true" : "false").append("\n");
-            toml.append("vulkan_pipeline_creation_threads = ").append(pipelineThreads).append("\n");
-            toml.append("readback_resolve = \"").append(readback ? "fast" : "none").append("\"\n");
-            toml.append("gpu_3d_to_2d_texture = true\n");
-            toml.append("native_2x_msaa = false\n");
-            toml.append("gamma_render_target_as_unorm16 = false\n\n");
+            toml.append("async_shader_compilation = ").append(asyncShaders ? "true" : "false").append((char) 10);
+            toml.append("vulkan_pipeline_creation_threads = ").append(pipelineThreads).append((char) 10);
+            toml.append("texture_cache_memory_limit_soft = ").append(textureCacheLimit).append((char) 10);
+            toml.append("gpu_3d_to_2d_texture = ").append(gpu3dTo2d ? "true" : "false").append((char) 10);
+            toml.append("readback_resolve = ").append((char) 34).append(readback ? "fast" : "none").append((char) 34).append((char) 10);
+            toml.append("native_2x_msaa = ").append(nativeMsaa ? "true" : "false").append((char) 10);
+            toml.append("gamma_render_target_as_unorm16 = false").append((char) 10).append((char) 10);
 
-            toml.append("audio_mute = ").append(mute ? "true" : "false").append("\n");
-            toml.append("mnk_mode = ").append(mnk ? "true" : "false").append("\n\n");
+            toml.append("audio_mute = ").append(mute ? "true" : "false").append((char) 10);
+            toml.append("mnk_mode = ").append(mnk ? "true" : "false").append((char) 10).append((char) 10);
 
-            toml.append("black_edition = ").append(black ? "true" : "false").append("\n");
-            toml.append("grant_user_privileges = ").append(grant ? "true" : "false").append("\n");
-            toml.append("user_profile_name = \"").append(gamertag).append("\"\n");
-            toml.append("game_speed = ").append(String.format(java.util.Locale.US, "%.1f", (float) speed)).append("\n");
-            toml.append("protect_zero = false\n");
+            toml.append("black_edition = ").append(black ? "true" : "false").append((char) 10);
+            toml.append("grant_user_privileges = ").append(grant ? "true" : "false").append((char) 10);
+            toml.append("user_profile_name = ").append((char) 34).append(gamertag).append((char) 34).append((char) 10);
+            toml.append("game_speed = ").append(String.format(java.util.Locale.US, "%.1f", (float) speed)).append((char) 10);
+            toml.append("log_level = ").append((char) 34).append(logLevel).append((char) 34).append((char) 10);
+            if ("error".equalsIgnoreCase(logLevel)) {
+                toml.append("log_noisy = false").append((char) 10);
+                toml.append("log_verbose = false").append((char) 10);
+            }
+            toml.append("protect_zero = false").append((char) 10);
 
             String tomlContent = toml.toString();
 
@@ -828,7 +843,6 @@ public class TitleActivity extends Activity {
             e.printStackTrace();
         }
     }
-
 
     private void extractBundledShaders(File extDir) {
         if (extDir == null) return;

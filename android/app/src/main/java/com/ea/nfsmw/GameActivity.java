@@ -79,9 +79,7 @@ public class GameActivity extends NativeActivity {
                 default: break;
             }
 
-            if (xinputButtons != 0 || lt > 0 || rt > 0 || Math.abs(lx) > 0.1f) {
-                Log.i(TAG, "Listener: btn=0x" + Integer.toHexString(xinputButtons) + " lx=" + lx + " ly=" + (-ly) + " lt=" + lt + " rt=" + rt);
-            }
+// Logging disabled for 60fps input performance
 
             try {
                 nativeSetVirtualGamepad(xinputButtons, lx, -ly, lt, rt);

@@ -164,6 +164,7 @@ void android_main(struct android_app* state) {
   rex::cvar::SetFlagByName("store_shaders", "true");
   rex::cvar::SetFlagByName("vsync", "true");
   rex::cvar::SetFlagByName("mnk_mode", "false");
+  rex::cvar::SetFlagByName("present_letterbox", "false");
 
   // 1280x720 Native Xbox 360 resolution fits within Adreno 650 8MB GMEM on-chip tile memory
   rex::cvar::SetFlagByName("video_mode_width", "1280");

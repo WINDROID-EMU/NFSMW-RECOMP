@@ -41,7 +41,7 @@
         android:paddingBottom="20dp"
         android:visibility="visible">
 
-        <!-- Barra Superior: Status do Sistema e Botão de Seleção de ROM -->
+        <!-- Barra Superior: Configurações e Seleção de ROM -->
         <LinearLayout
             android:id="@+id/top_control_bar"
             android:layout_width="match_parent"
@@ -49,6 +49,21 @@
             android:layout_alignParentTop="true"
             android:gravity="center_vertical"
             android:orientation="horizontal">
+
+            <!-- Botão de Configurações ReXGlue / Runtime -->
+            <Button
+                android:id="@+id/btn_settings"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:background="@drawable/rom_button_bg"
+                android:elevation="4dp"
+                android:letterSpacing="0.05"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="⚙ CONFIGURAÇÕES"
+                android:textColor="@color/nfsmw_amber"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
             <View
                 android:layout_width="0dp"
@@ -131,21 +146,6 @@
             android:textColor="#99FFFFFF"
             android:textSize="10sp"
             android:visibility="gone" />
-
-        <Button
-            android:id="@+id/btn_settings"
-            style="@android:style/Widget.Button.Inset"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:elevation="4dp"
-            android:letterSpacing="0.05"
-            android:text="⚙"
-            android:textColor="@color/nfsmw_black"
-            android:textColorHighlight="#00FFFFFF"
-            android:textColorHint="#00FFFFFF"
-            android:textColorLink="#00FFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
 
     </RelativeLayout>
 

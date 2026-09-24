@@ -952,8 +952,13 @@ class Shader {
   // with respect to translation creation/destruction.
   const std::unordered_map<uint64_t, Translation*>& translations() const { return translations_; }
   Translation* GetTranslation(uint64_t modification) const {
+    if (last_translation_ && last_translation_modification_ == modification) {
+      return last_translation_;
+    }
     auto it = translations_.find(modification);
     if (it != translations_.cend()) {
+      last_translation_ = it->second;
+      last_translation_modification_ = modification;
       return it->second;
     }
     return nullptr;
@@ -1030,6 +1035,8 @@ class Shader {
 
   // Modification bits -> translation.
   std::unordered_map<uint64_t, Translation*> translations_;
+  mutable Translation* last_translation_ = nullptr;
+  mutable uint64_t last_translation_modification_ = 0;
 
   uint32_t ucode_storage_index_ = UINT32_MAX;
 

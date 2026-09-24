@@ -17,7 +17,8 @@
         android:hasCode="true"
         android:theme="@style/Theme.NFSMW.Title"
         android:requestLegacyExternalStorage="true"
-        android:extractNativeLibs="true">
+        android:extractNativeLibs="true"
+        android:largeHeap="true">
 
         <!-- Tela de Título Fullscreen Adaptável -->
         <activity

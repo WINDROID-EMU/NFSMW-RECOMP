@@ -444,9 +444,7 @@ public class VirtualControllerInputView extends View {
     public boolean onTouchEvent(MotionEvent event) {
         int action = event.getActionMasked();
         int actionIdx = event.getActionIndex();
-        if (action != MotionEvent.ACTION_MOVE) {
-            android.util.Log.i("NFS-VirtualControls", "onTouchEvent: action=" + action + " (" + event.getX(actionIdx) + ", " + event.getY(actionIdx) + ") ptrs=" + event.getPointerCount());
-        }
+// Touch logging disabled for performance
 
         float lx = leftAnalog.isPressed ? (leftAnalog.fingerX / (leftAnalog.radius / 4)) : 0F;
         float ly = leftAnalog.isPressed ? (leftAnalog.fingerY / (leftAnalog.radius / 4)) : 0F;
@@ -664,7 +662,7 @@ public class VirtualControllerInputView extends View {
 
     private void handleButton(VirtualControllerButton button, boolean isPressed) {
         button.isPressed = isPressed;
-        android.util.Log.i("NFS-VirtualControls", "handleButton: " + getButtonName(button.id) + " pressed=" + isPressed);
+// Button logging disabled for performance
 
         switch (button.id) {
             case A_BUTTON -> {

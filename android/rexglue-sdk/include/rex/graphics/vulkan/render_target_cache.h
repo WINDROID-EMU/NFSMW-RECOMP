@@ -65,8 +65,6 @@ class VulkanRenderTargetCache final : public RenderTargetCache {
       xenos::ColorRenderTargetFormat color_3_view_format
           : xenos::kColorRenderTargetFormatBits;    // 24
       uint32_t color_rts_use_transfer_formats : 1;  // 25
-      uint32_t depth_store_dont_care : 1;           // 26
-      uint32_t color_store_dont_care : 1;           // 27
     };
     uint32_t key = 0;
     struct Hasher {

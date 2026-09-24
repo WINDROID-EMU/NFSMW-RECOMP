@@ -1,4 +1,4 @@
-prefix=/home/windroid/Documentos/RunTime/out/install/android-arm64-release
+prefix=/home/windroid/Documentos/RunTime/out/install/android-arm64
 exec_prefix=${prefix}
 includedir=${prefix}/include
 libdir=${exec_prefix}/lib

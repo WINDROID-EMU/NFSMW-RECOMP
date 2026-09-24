@@ -379,6 +379,9 @@ class VulkanTextureCache final : public TextureCache {
   std::pair<const SamplerParameters, Sampler>* sampler_used_first_ = nullptr;
   std::pair<const SamplerParameters, Sampler>* sampler_used_last_ = nullptr;
   uint32_t custom_border_color_sampler_count_ = 0;
+  SamplerParameters last_sampler_parameters_{};
+  VkSampler last_sampler_ = VK_NULL_HANDLE;
+  uint64_t last_sampler_submission_ = UINT64_MAX;
 
   VkBuffer scaled_resolve_buffer_ = VK_NULL_HANDLE;
   uint64_t scaled_resolve_buffer_size_ = 0;

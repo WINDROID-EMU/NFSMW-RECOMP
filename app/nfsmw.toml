@@ -57,6 +57,7 @@ vulkan_submit_on_primary_buffer_end = false
 readback_resolve = "none"
 async_shader_compilation = true
 vulkan_dynamic_rendering = true
+present_letterbox = false
 
 # ----------------------------------------------------------------------------
 #  Otimizações de Iluminação, Sombras e Render Targets

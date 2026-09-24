@@ -18,11 +18,11 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="⚙ CONFIGURAÇÕES DO JOGO"
+            android:text="⚙ CONFIGURAÇÕES DO JOGO &amp; RUNTIME"
             android:textColor="@color/nfsmw_amber"
-            android:textSize="18sp"
+            android:textSize="17sp"
             android:textStyle="bold"
-            android:letterSpacing="0.05" />
+            android:letterSpacing="0.04" />
 
         <Button
             android:id="@+id/btn_close_settings"
@@ -99,22 +99,6 @@
                 android:background="@drawable/spinner_bg"
                 android:layout_marginBottom="10dp" />
 
-            <!-- Limite de FPS -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Limite de Taxa de Quadros (FPS):"
-                android:textColor="#E0E0E0"
-                android:textSize="12sp"
-                android:layout_marginBottom="2dp" />
-
-            <Spinner
-                android:id="@+id/sp_max_fps"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:background="@drawable/spinner_bg"
-                android:layout_marginBottom="10dp" />
-
             <!-- V-Sync -->
             <Switch
                 android:id="@+id/sw_vsync"
@@ -126,40 +110,24 @@
                 android:paddingTop="6dp"
                 android:paddingBottom="6dp" />
 
-            <!-- Upscaler / Efeito de Apresentação -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Filtro de Escalonamento / Upscaler:"
-                android:textColor="#E0E0E0"
-                android:textSize="12sp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="2dp" />
-
-            <Spinner
-                android:id="@+id/sp_present_effect"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:background="@drawable/spinner_bg"
-                android:layout_marginBottom="10dp" />
-
-            <!-- Nitidez CAS / FSR -->
-            <TextView
-                android:id="@+id/tv_sharpness_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Nitidez CAS / FSR: 0%"
-                android:textColor="#E0E0E0"
-                android:textSize="12sp"
-                android:layout_marginBottom="2dp" />
-
-            <SeekBar
-                android:id="@+id/sb_sharpness"
+            <!-- Tela Estendida / Preencher Tela -->
+            <Switch
+                android:id="@+id/sw_stretch_screen"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:max="100"
-                android:progress="0"
-                android:layout_marginBottom="14dp" />
+                android:text="Tela Estendida (Preencher Toda a Tela)"
+                android:textColor="#E0E0E0"
+                android:textSize="13sp"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ℹ Elimina barras pretas esticando o jogo conforme a proporção do aparelho."
+                android:textColor="#A0A0A0"
+                android:textSize="10sp"
+                android:layout_marginBottom="8dp" />
 
             <!-- Divisor -->
             <View
@@ -170,12 +138,12 @@
                 android:layout_marginBottom="12dp" />
 
             <!-- ========================================================= -->
-            <!-- SEÇÃO 2: GRÁFICOS & GPU (OTIMIZAÇÕES ANDROID)             -->
+            <!-- SEÇÃO 2: MOTOR GRÁFICO & VULKAN (ReXGlue)                 -->
             <!-- ========================================================= -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="⚡ GRÁFICOS &amp; OTIMIZAÇÕES GPU"
+                android:text="⚡ MOTOR GRÁFICO &amp; VULKAN (ReXGlue)"
                 android:textColor="@color/nfsmw_amber_light"
                 android:textSize="14sp"
                 android:textStyle="bold"
@@ -185,7 +153,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Emulação da EDRAM da Xbox 360:"
+                android:text="Emulação da EDRAM do Xenos:"
                 android:textColor="#E0E0E0"
                 android:textSize="12sp"
                 android:layout_marginBottom="2dp" />
@@ -200,7 +168,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="ℹ O modo 'rtv' dobra a taxa de quadros e é altamente recomendado para celulares."
+                android:text="ℹ O modo 'rtv' (FBO) duplica a taxa de quadros e é altamente recomendado para celulares."
                 android:textColor="#A0A0A0"
                 android:textSize="10sp"
                 android:layout_marginBottom="10dp" />
@@ -219,7 +187,26 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="ℹ Evita travamentos durante a corrida quando novos efeitos aparecem na pista."
+                android:text="ℹ Compila pipelines em segundo plano para reduzir travamentos no jogo."
+                android:textColor="#A0A0A0"
+                android:textSize="10sp"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Vulkan Async Skip Incomplete Frames -->
+            <Switch
+                android:id="@+id/sw_async_skip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Pular Quadros com Shaders Incompletos"
+                android:textColor="#E0E0E0"
+                android:textSize="13sp"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ℹ Evita quedas repentinas de FPS quando novos efeitos são compilados na pista."
                 android:textColor="#A0A0A0"
                 android:textSize="10sp"
                 android:layout_marginBottom="10dp" />
@@ -248,12 +235,36 @@
                 android:textSize="10sp"
                 android:layout_marginBottom="10dp" />
 
-            <!-- Readback Resolve -->
-            <Switch
-                android:id="@+id/sw_readback_resolve"
+            <!-- Limite de Memória de Texturas (texture_cache_memory_limit_soft) -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Limite de Memória do Cache de Texturas:"
+                android:textColor="#E0E0E0"
+                android:textSize="12sp"
+                android:layout_marginBottom="2dp" />
+
+            <Spinner
+                android:id="@+id/sp_texture_cache_limit"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:background="@drawable/spinner_bg"
+                android:layout_marginBottom="2dp" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Efeitos de Exposição / Desfoque (readback_resolve)"
+                android:text="ℹ 256MB ou 384MB previne fechamentos forçados por falta de RAM no Android em celulares de 4GB a 6GB."
+                android:textColor="#A0A0A0"
+                android:textSize="10sp"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Conversão de Textura 3D para 2D -->
+            <Switch
+                android:id="@+id/sw_gpu_3d_to_2d"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Otimizar Texturas 3D para 2D (gpu_3d_to_2d)"
                 android:textColor="#E0E0E0"
                 android:textSize="13sp"
                 android:paddingTop="6dp"
@@ -262,7 +273,26 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="ℹ Desativar alivia bastante a largura de banda de memória em processadores móveis."
+                android:text="ℹ Economiza largura de banda de memória gráfica em GPUs móveis Adreno e Mali."
+                android:textColor="#A0A0A0"
+                android:textSize="10sp"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Readback Resolve -->
+            <Switch
+                android:id="@+id/sw_readback_resolve"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Efeitos de Pós-Processamento / Bloom (readback_resolve)"
+                android:textColor="#E0E0E0"
+                android:textSize="13sp"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ℹ Desativar alivia bastante a GPU e eleva a taxa de quadros (FPS) no Android."
                 android:textColor="#A0A0A0"
                 android:textSize="10sp"
                 android:layout_marginBottom="10dp" />
@@ -297,7 +327,26 @@
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:background="@drawable/spinner_bg"
-                android:layout_marginBottom="14dp" />
+                android:layout_marginBottom="10dp" />
+
+            <!-- MSAA Nativo 2x -->
+            <Switch
+                android:id="@+id/sw_native_msaa"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="MSAA Nativo 2x (Anti-Serrilhado de Geometria)"
+                android:textColor="#E0E0E0"
+                android:textSize="13sp"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ℹ Suavização poligonal. Mantenha desativado em celulares intermediários."
+                android:textColor="#A0A0A0"
+                android:textSize="10sp"
+                android:layout_marginBottom="10dp" />
 
             <!-- Divisor -->
             <View
@@ -350,12 +399,12 @@
                 android:layout_marginBottom="12dp" />
 
             <!-- ========================================================= -->
-            <!-- SEÇÃO 4: JOGO & CONTEÚDO                                  -->
+            <!-- SEÇÃO 4: JOGO & SISTEMA                                   -->
             <!-- ========================================================= -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🏎️ JOGO &amp; CONTEÚDO"
+                android:text="🏎️ JOGO &amp; SISTEMA"
                 android:textColor="@color/nfsmw_amber_light"
                 android:textSize="14sp"
                 android:textStyle="bold"
@@ -405,6 +454,30 @@
                 android:maxLength="15"
                 android:layout_marginBottom="10dp" />
 
+            <!-- Nível de Log do Runtime -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nível de Registro / Logs do Runtime:"
+                android:textColor="#E0E0E0"
+                android:textSize="12sp"
+                android:layout_marginBottom="2dp" />
+
+            <Spinner
+                android:id="@+id/sp_log_level"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:background="@drawable/spinner_bg"
+                android:layout_marginBottom="2dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ℹ 'Erro (Desempenho)' desativa logs desnecessários reduzindo overhead de gravação no Android."
+                android:textColor="#A0A0A0"
+                android:textSize="10sp"
+                android:layout_marginBottom="10dp" />
+
             <!-- Velocidade do Jogo -->
             <TextView
                 android:id="@+id/tv_speed_label"
@@ -448,9 +521,9 @@
             android:layout_height="44dp"
             android:layout_weight="1"
             android:background="@drawable/rom_button_bg"
-            android:text="🔄 PADRÕES"
+            android:text="🔄 PADRÕES ANDROID"
             android:textColor="#CCCCCC"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:textStyle="bold"
             android:layout_marginEnd="8dp" />
 

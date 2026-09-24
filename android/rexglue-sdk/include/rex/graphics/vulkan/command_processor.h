@@ -548,9 +548,20 @@ class VulkanCommandProcessor : public CommandProcessor {
     uint32_t vertices = 0;
     uint32_t resolves = 0;
     uint32_t render_passes = 0;
+    uint32_t rp_barrier = 0;
+    uint32_t rp_fb = 0;
+    uint32_t rp_pass = 0;
+    uint32_t rp_transfer = 0;
+    uint32_t barrier_shmem = 0;
+    uint32_t barrier_other_buf = 0;
+    uint32_t barrier_img = 0;
     uint32_t pipeline_binds = 0;
     uint64_t fence_wait_ns = 0;
     uint64_t draw_cpu_ns = 0;
+    uint64_t draw_prim_cpu_ns = 0;
+    uint64_t draw_rt_cpu_ns = 0;
+    uint64_t draw_pipe_cpu_ns = 0;
+    uint64_t draw_bind_cpu_ns = 0;
     uint64_t resolve_cpu_ns = 0;
     uint64_t queue_submit_ns = 0;
     uint64_t swap_cpu_ns = 0;
@@ -852,6 +863,12 @@ class VulkanCommandProcessor : public CommandProcessor {
   // Float constant usage masks of the last draw call.
   uint64_t current_float_constant_map_vertex_[4];
   uint64_t current_float_constant_map_pixel_[4];
+
+  // Cached descriptors for adjacent draw calls.
+  std::vector<VkImageView> last_bound_vertex_image_views_;
+  std::vector<VkSampler> last_bound_vertex_samplers_;
+  std::vector<VkImageView> last_bound_pixel_image_views_;
+  std::vector<VkSampler> last_bound_pixel_samplers_;
 
   // System shader constants.
   SpirvShaderTranslator::SystemConstants system_constants_;

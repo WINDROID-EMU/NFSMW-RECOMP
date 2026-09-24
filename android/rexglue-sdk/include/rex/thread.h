@@ -88,6 +88,12 @@ class Fence {
 // Returns the total number of logical processors in the host system.
 uint32_t logical_processor_count();
 
+// Returns bitmask of high-performance cores (Big + Prime) on heterogeneous systems (e.g. big.LITTLE).
+uint64_t performance_core_mask();
+
+// Returns bitmask of highest-frequency core(s) (Prime).
+uint64_t prime_core_mask();
+
 // Enables the current process to set thread affinity.
 // Must be called at startup before attempting to set thread affinity.
 void EnableAffinityConfiguration();

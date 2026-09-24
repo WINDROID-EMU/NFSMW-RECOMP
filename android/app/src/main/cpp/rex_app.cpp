@@ -362,32 +362,25 @@ static void ScanLibraryGot(const struct dl_phdr_info* info, LibraryGotSlots& out
 static int DlIteratePatchCallback(struct dl_phdr_info* info, size_t, void*) {
   if (!info->dlpi_name) return 0;
 
-  bool is_rexruntime = strstr(info->dlpi_name, "librexruntimerd.so") != nullptr;
-  bool is_mk9 = strstr(info->dlpi_name, "libmortalkombat9.so") != nullptr;
+  bool is_rexruntime = strstr(info->dlpi_name, "librexruntime.so") != nullptr ||
+                       strstr(info->dlpi_name, "librexruntimerd.so") != nullptr;
 
-  if (is_rexruntime || is_mk9) {
+  if (is_rexruntime) {
     LibraryGotSlots slots{};
     ScanLibraryGot(info, slots);
 
-    if (is_rexruntime) {
-      // Fallback to verified ELF relocations if dynamic scan did not locate all slots
-      if (!slots.got_pthread_create) slots.got_pthread_create = reinterpret_cast<void**>(info->dlpi_addr + 0x85d728);
-      if (!slots.got_pthread_join) slots.got_pthread_join = reinterpret_cast<void**>(info->dlpi_addr + 0x85de68);
-      if (!slots.got_pthread_detach) slots.got_pthread_detach = reinterpret_cast<void**>(info->dlpi_addr + 0x866c88);
-
+    if (slots.got_pthread_create) {
       PatchGotSlot(slots.got_pthread_create, (void*)&HookedPthreadCreate, (void**)&g_real_pthread_create);
-      PatchGotSlot(slots.got_pthread_join, (void*)&HookedPthreadJoin, (void**)&g_real_pthread_join);
-      PatchGotSlot(slots.got_pthread_detach, (void*)&HookedPthreadDetach, (void**)&g_real_pthread_detach);
-      __android_log_print(ANDROID_LOG_INFO, "BionicPthreadFix",
-                          "Patched librexruntimerd.so pthread GOT slots (create=%p, join=%p, detach=%p)",
-                          slots.got_pthread_create, slots.got_pthread_join, slots.got_pthread_detach);
-    } else if (is_mk9) {
-      if (slots.got_pthread_create) {
-        PatchGotSlot(slots.got_pthread_create, (void*)&HookedPthreadCreate, (void**)&g_real_pthread_create);
-        __android_log_print(ANDROID_LOG_INFO, "BionicPthreadFix",
-                            "Patched libmortalkombat9.so pthread_create GOT slot (%p)", slots.got_pthread_create);
-      }
     }
+    if (slots.got_pthread_join) {
+      PatchGotSlot(slots.got_pthread_join, (void*)&HookedPthreadJoin, (void**)&g_real_pthread_join);
+    }
+    if (slots.got_pthread_detach) {
+      PatchGotSlot(slots.got_pthread_detach, (void*)&HookedPthreadDetach, (void**)&g_real_pthread_detach);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "BionicPthreadFix",
+                        "Patched librexruntime pthread GOT slots (create=%p, join=%p, detach=%p)",
+                        slots.got_pthread_create, slots.got_pthread_join, slots.got_pthread_detach);
   }
   return 0;
 }
@@ -399,8 +392,7 @@ static void InitBionicPthreadFix() {
   if (!g_real_pthread_detach) g_real_pthread_detach = (int(*)(pthread_t))dlsym(RTLD_DEFAULT, "pthread_detach");
 
   dl_iterate_phdr(DlIteratePatchCallback, nullptr);
-  ConfigurePerformanceThread();
-  __android_log_print(ANDROID_LOG_INFO, "BionicPthreadFix", "Bionic pthread hooks initialized successfully and main thread configured for Big.LITTLE performance cores!");
+  __android_log_print(ANDROID_LOG_INFO, "BionicPthreadFix", "Bionic pthread hooks initialized successfully.");
 }
 
 }  // namespace
