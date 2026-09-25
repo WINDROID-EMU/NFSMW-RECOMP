@@ -349,15 +349,19 @@ class NfsmwApp : public rex::ReXApp {
   // ==========================================================================
 
   void ArrancarVigilante() {
+#if !defined(REX_PLATFORM_ANDROID)
     vigilante_activo_ = true;
     vigilante_ = std::thread([this] { VigilanteMain(); });
+#endif
   }
 
   void PararVigilante() {
+#if !defined(REX_PLATFORM_ANDROID)
     vigilante_activo_ = false;
     if (vigilante_.joinable()) {
       vigilante_.join();
     }
+#endif
   }
 
   // Volcado de la tabla de hilos. 'grave' decide si sale como error -cuando

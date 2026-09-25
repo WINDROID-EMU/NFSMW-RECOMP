@@ -973,6 +973,10 @@ public class TitleActivity extends Activity {
                 toml.append("log_verbose = false").append((char) 10);
             }
             toml.append("protect_zero = false").append((char) 10);
+            toml.append("query_occlusion_fake_sample_count = 1").append((char) 10);
+            toml.append("primitive_processor_cache_min_indices = -1").append((char) 10);
+            toml.append("clear_memory_page_state = false").append((char) 10);
+            toml.append("depth_transfer_not_equal_test = false").append((char) 10);
 
             String tomlContent = toml.toString();
 

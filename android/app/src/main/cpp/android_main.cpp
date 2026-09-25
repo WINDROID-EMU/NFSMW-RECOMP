@@ -8,6 +8,7 @@
 #include <rex/thread.h>
 #include <rex/filesystem.h>
 #include <rex/ui/windowed_app.h>
+#include <sys/resource.h>
 
 #include "ui/android_app_context.h"
 #include "ui/android_window.h"
@@ -150,6 +151,9 @@ void android_main(struct android_app* state) {
   rex::thread::AndroidInitialize();
   rex::filesystem::AndroidInitialize();
 
+  // Prioritize main game thread on Android to ensure scheduling on performance cores (Cortex-X2/A710)
+  setpriority(PRIO_PROCESS, 0, -8);
+
   // Initialize CVars before setting flags
   char* dummy_argv[] = { const_cast<char*>("nfsmw"), nullptr };
   rex::cvar::Init(1, dummy_argv);
@@ -191,6 +195,7 @@ void android_main(struct android_app* state) {
   rex::cvar::SetFlagByName("anisotropic_override", "1");
 
   // Adreno performance & logging optimizations
+  rex::cvar::SetFlagByName("query_occlusion_fake_sample_count", "1");
   rex::cvar::SetFlagByName("primitive_processor_cache_min_indices", "-1");
   rex::cvar::SetFlagByName("vulkan_validation_enabled", "false");
   rex::cvar::SetFlagByName("vulkan_log_debug_messages", "false");
