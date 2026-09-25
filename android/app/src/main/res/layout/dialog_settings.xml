@@ -497,6 +497,85 @@
                 android:progress="100"
                 android:layout_marginBottom="16dp" />
 
+            <!-- Divisor -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#20FFFFFF"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- ========================================================= -->
+            <!-- SEÇÃO 5: DRIVER VULKAN (TURNIP / MESA)                    -->
+            <!-- ========================================================= -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎮 DRIVER VULKAN (TURNIP / MESA)"
+                android:textColor="@color/nfsmw_amber_light"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="6dp" />
+
+            <!-- Status do driver instalado -->
+            <TextView
+                android:id="@+id/tv_turnip_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="● Driver: usando sistema (padrão)"
+                android:textColor="#A0A0A0"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ℹ Instale o Turnip/Mesa para garantir Vulkan 1.3+, shaderInt64 e BDA — essencial para GPUs Adreno cuja fabricante não expõe essas capacidades no driver padrão."
+                android:textColor="#A0A0A0"
+                android:textSize="10sp"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Botões: Instalar e Remover -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <Button
+                    android:id="@+id/btn_install_turnip"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/start_button_bg"
+                    android:text="📦 INSTALAR (ZIP)"
+                    android:textColor="@color/nfsmw_black"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="6dp" />
+
+                <Button
+                    android:id="@+id/btn_remove_turnip"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="0.8"
+                    android:background="@drawable/rom_button_bg"
+                    android:text="🗑 REMOVER"
+                    android:textColor="#FF6666"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="6dp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Baixe em: github.com/K11MCH1/AdrenoToolsDrivers — Adreno 6xx (650) ou 7xx (730)"
+                android:textColor="#707070"
+                android:textSize="10sp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="16dp" />
+
         </LinearLayout>
     </ScrollView>
 

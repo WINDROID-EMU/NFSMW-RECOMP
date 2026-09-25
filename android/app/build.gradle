@@ -2,6 +2,56 @@ plugins {
     id 'com.android.application'
 }
 
+// ── Sincronização das .so do ReXGlue SDK ──────────────────────────────────────
+// O CMake linka libnfsmw.so contra rexglue-sdk/lib/*.so, mas o AGP empacota
+// as .so que estão em jniLibs/arm64-v8a/. Se o SDK for atualizado e a pasta
+// jniLibs não for sincronizada, o APK carrega versões incompatíveis em runtime.
+//
+// Esta task copia automaticamente librexruntime.so e librexgpu-xenos.so do SDK
+// para jniLibs/ antes de qualquer assemblagem, garantindo que linkagem e
+// empacotamento sempre usem os mesmos binários.
+// ─────────────────────────────────────────────────────────────────────────────
+def sdkLibDir   = file("${rootDir}/../CMakeLists.txt").parentFile  // android/
+def rexglueSdk  = file("${sdkLibDir}/rexglue-sdk/lib")
+def jniLibsDir  = file("${projectDir}/src/main/jniLibs/arm64-v8a")
+
+def rexSoFiles = [
+    "librexruntime.so",
+    "librexgpu-xenos.so",
+]
+
+tasks.register("syncRexGlueSoLibs") {
+    description = "Copia as .so do rexglue-sdk/lib para jniLibs/ se forem mais novas."
+    group       = "build"
+
+    inputs.files  rexSoFiles.collect { new File(rexglueSdk, it) }
+    outputs.files rexSoFiles.collect { new File(jniLibsDir, it) }
+
+    doLast {
+        if (!rexglueSdk.exists()) {
+            logger.warn("[syncRexGlueSoLibs] rexglue-sdk/lib não encontrado — pulando sincronização.")
+            return
+        }
+        jniLibsDir.mkdirs()
+        rexSoFiles.each { name ->
+            def src  = new File(rexglueSdk, name)
+            def dest = new File(jniLibsDir, name)
+            if (!src.exists()) {
+                logger.warn("[syncRexGlueSoLibs] ${name} não encontrado em rexglue-sdk/lib — pulando.")
+                return
+            }
+            if (!dest.exists() || src.lastModified() > dest.lastModified() || src.length() != dest.length()) {
+                logger.lifecycle("[syncRexGlueSoLibs] Atualizando ${name} (${src.length()} bytes)")
+                src.withInputStream { is -> dest.withOutputStream { os -> os << is } }
+                dest.setLastModified(src.lastModified())
+            } else {
+                logger.info("[syncRexGlueSoLibs] ${name} já está sincronizado.")
+            }
+        }
+    }
+}
+
+
 android {
     namespace 'com.ea.nfsmw'
     compileSdk 34
@@ -58,6 +108,9 @@ android {
 
     packaging {
         jniLibs {
+            // useLegacyPackaging = true is REQUIRED by libadrenotools.
+            // The hook installation reads nativeLibraryDir, which is only
+            // populated when .so files are extracted (not read from the apk).
             useLegacyPackaging = true
             keepDebugSymbols.clear()
             pickFirsts += [
@@ -66,9 +119,11 @@ android {
                 'lib/arm64-v8a/librexgpu-xenos.so',
                 'lib/arm64-v8a/librexgpu-xenosrd.so',
                 'lib/arm64-v8a/libc++_shared.so',
+                'lib/arm64-v8a/libadrenotools.so',
                 '**/librexruntime*.so',
                 '**/librexgpu-xenos*.so',
-                '**/libc++_shared.so'
+                '**/libc++_shared.so',
+                '**/libadrenotools.so'
             ]
         }
         resources {
@@ -78,10 +133,48 @@ android {
                 'lib/arm64-v8a/librexgpu-xenos.so',
                 'lib/arm64-v8a/librexgpu-xenosrd.so',
                 'lib/arm64-v8a/libc++_shared.so',
+                'lib/arm64-v8a/libadrenotools.so',
                 '**/librexruntime*.so',
                 '**/librexgpu-xenos*.so',
-                '**/libc++_shared.so'
+                '**/libc++_shared.so',
+                '**/libadrenotools.so'
             ]
         }
     }
 }
+
+// ── Conecta syncRexGlueSoLibs ao ciclo de build do AGP ───────────────────────
+// afterEvaluate garante que as tasks do Android Plugin já existem quando
+// configuramos a dependência. syncRexGlueSoLibs roda automaticamente antes
+// de qualquer assembleDebug / assembleRelease.
+afterEvaluate {
+    tasks.matching { it.name.startsWith("assemble") || it.name == "preBuild" }.configureEach {
+        dependsOn("syncRexGlueSoLibs")
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Turnip / Mesa driver installation guide
+// ----------------------------------------
+// To enable the open-source Adreno driver (Vulkan 1.3/1.4, shaderInt64):
+//
+//   1. Download the Mesa Turnip .so for your device from:
+//        https://github.com/K11MCH1/AdrenoToolsDrivers/releases
+//        (choose the arm64 build, e.g. Turnip-24.x.x-Adreno6xx.zip)
+//
+//   2. Extract and rename the library to: libvulkan_freedreno.so
+//
+//   3. On the device, push it to the app's internal storage:
+//        adb push libvulkan_freedreno.so \\
+//          /data/data/com.ea.nfsmw/files/turnip/libvulkan_freedreno.so
+//
+//      OR use a file manager app to create the folder:
+//        Android/data/com.ea.nfsmw/files/turnip/
+//      and place libvulkan_freedreno.so inside it.
+//
+//   4. Launch the game. Logcat will show:
+//        [Vulkan] Turnip/Mesa driver active — shaderInt64 + BDA guaranteed
+//
+//   If the driver is not found, the stock system driver is used silently.
+// ────────────────────────────────────────────────────────────────────
+

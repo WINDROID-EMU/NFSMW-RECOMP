@@ -1,5 +1,5 @@
-prefix=/home/windroid/Documentos/RunTime/out/install/android-arm64
-exec_prefix=/home/windroid/Documentos/RunTime/out/install/android-arm64
+prefix=/media/windroid/SSD KING/PROJETO NFSMW RECOMP/RunTime/out/install/android-arm64
+exec_prefix=/media/windroid/SSD KING/PROJETO NFSMW RECOMP/RunTime/out/install/android-arm64
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
 

@@ -60,7 +60,10 @@ bool AndroidAAudioDriver::Initialize() {
   if (result == AAUDIO_OK && stream_) {
     int32_t burst = AAudioStream_getFramesPerBurst(stream_);
     if (burst > 0) {
-      AAudioStream_setBufferSizeInFrames(stream_, burst * 2);
+      // Use 4 bursts (or at least 1024 frames ~= 21ms at 48kHz) to eliminate
+      // micro-stuttering from AudioFlinger buffer underruns during heavy rendering/streaming.
+      int32_t target_buffer = std::max(burst * 4, 1024);
+      AAudioStream_setBufferSizeInFrames(stream_, target_buffer);
     }
   }
 

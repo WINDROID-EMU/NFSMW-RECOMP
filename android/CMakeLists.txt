@@ -1,6 +1,21 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(nfsmw LANGUAGES CXX C)
 
+# ── libadrenotools (Turnip/Mesa custom Vulkan driver loader) ──────────────────
+# Downloaded at configure time; compiled as a shared library so that
+# adrenotools_open_libvulkan() can be dlopen()'d by our vulkan_driver_loader.h.
+# The ADRENOTOOLS_BUILD_SHARED option is set before add_subdirectory so the
+# upstream CMakeLists picks it up.
+include(FetchContent)
+FetchContent_Declare(
+    adrenotools
+    GIT_REPOSITORY https://github.com/bylaws/libadrenotools.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+set(GEN_INSTALL_TARGET OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(adrenotools)
+
 # Restrict parallel jobs for Ninja to prevent Out-Of-Memory on CI runners
 set_property(GLOBAL PROPERTY JOB_POOLS compile_jobs=1 link_jobs=1)
 string(REGEX REPLACE "(^| )-g([0-9]?| )" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
@@ -101,9 +116,35 @@ endif()
 target_link_libraries(nfsmw PRIVATE
     -Wl,--whole-archive native_app_glue -Wl,--no-whole-archive
     rex::runtime
+    adrenotools
     android
     log
     aaudio
     vulkan
     OpenSLES
+)
+
+# ── libadrenotools shared output ──────────────────────────────────────────────
+# adrenotools must also be available as a stand-alone .so so our dlopen() call
+# in vulkan_driver_loader.h can locate it via nativeLibraryDir at runtime.
+# We build a thin shared wrapper that re-exports the adrenotools symbols.
+add_library(adrenotools_shared SHARED
+    ${adrenotools_SOURCE_DIR}/src/driver.cpp
+    ${adrenotools_SOURCE_DIR}/src/bcenabler.cpp
+)
+target_include_directories(adrenotools_shared PUBLIC
+    ${adrenotools_SOURCE_DIR}/include
+    ${adrenotools_SOURCE_DIR}/lib/linkernsbypass/include
+)
+target_include_directories(adrenotools_shared PRIVATE
+    ${adrenotools_SOURCE_DIR}
+    ${adrenotools_SOURCE_DIR}/src
+)
+target_link_libraries(adrenotools_shared PRIVATE
+    linkernsbypass
+    android
+    log
+)
+set_target_properties(adrenotools_shared PROPERTIES
+    OUTPUT_NAME "adrenotools"
 )

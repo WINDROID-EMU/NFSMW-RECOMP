@@ -824,6 +824,11 @@ class VulkanCommandProcessor : public CommandProcessor {
   const VulkanRenderTargetCache::Framebuffer* current_framebuffer_;
   bool in_render_pass_ = false;
   bool current_stencil_enable_ = false;
+  VkImageView current_dynamic_depth_view_ = VK_NULL_HANDLE;
+  VkImageView current_dynamic_stencil_view_ = VK_NULL_HANDLE;
+  uint32_t current_dynamic_color_count_ = 0;
+  VkImageView current_dynamic_color_views_[xenos::kMaxColorRenderTargets] = {};
+  VkExtent2D current_dynamic_extent_{};
 
   // Currently bound graphics pipeline, either from the pipeline cache (with
   // potentially deferred creation - current_external_graphics_pipeline_ is

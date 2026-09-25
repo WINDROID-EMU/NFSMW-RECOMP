@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,9 +30,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class TitleActivity extends Activity {
 
@@ -59,9 +65,16 @@ public class TitleActivity extends Activity {
     private static final String KEY_LOG_LEVEL = "cfg_log_level";
     private static final String KEY_GAME_SPEED = "cfg_game_speed";
 
-    private static final int REQ_CODE_FOLDER = 1001;
-    private static final int REQ_CODE_ISO = 1002;
-    private static final int REQ_CODE_MANAGE_STORAGE = 1003;
+    private static final int REQ_CODE_FOLDER          = 1001;
+    private static final int REQ_CODE_ISO              = 1002;
+    private static final int REQ_CODE_MANAGE_STORAGE   = 1003;
+    private static final int REQ_CODE_TURNIP_ZIP       = 1004;
+
+    private static final String TURNIP_SUBDIR   = "turnip";
+    private static final String TURNIP_FILENAME = "libvulkan_freedreno.so";
+
+    // Held during the ZIP-picker flow so we can update the status text after install
+    private TextView pendingTurnipStatusView = null;
 
     private View rootLayout;
     private View startPromptContainer;
@@ -353,12 +366,33 @@ public class TitleActivity extends Activity {
             return;
         }
 
+        // ── Turnip ZIP picker result ──────────────────────────────────────────
+        if (requestCode == REQ_CODE_TURNIP_ZIP) {
+            try (InputStream is = getContentResolver().openInputStream(uri)) {
+                if (is != null) {
+                    extractTurnipFromStream(is, pendingTurnipStatusView);
+                } else {
+                    Toast.makeText(this,
+                        "Não foi possível abrir o arquivo ZIP.",
+                        Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                android.util.Log.e("NFS-Turnip", "Failed to open ZIP URI", e);
+                Toast.makeText(this,
+                    "Erro ao abrir ZIP: " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+            }
+            pendingTurnipStatusView = null;
+            return;
+        }
+
         try {
             getContentResolver().takePersistableUriPermission(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
             );
         } catch (Exception ignored) {}
+
 
         String resolvedPath = resolveRealPathFromUri(uri, requestCode == REQ_CODE_FOLDER);
         if (resolvedPath != null) {
@@ -506,6 +540,109 @@ public class TitleActivity extends Activity {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Turnip driver helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Returns the directory where the Turnip driver SO lives. */
+    private File getTurnipDir() {
+        return new File(getFilesDir(), TURNIP_SUBDIR);
+    }
+
+    /** Returns the Turnip driver SO file (may or may not exist). */
+    private File getTurnipSo() {
+        return new File(getTurnipDir(), TURNIP_FILENAME);
+    }
+
+    /** Updates the Turnip status TextView to reflect what is currently installed. */
+    private void refreshTurnipStatus(TextView statusView) {
+        if (statusView == null) return;
+        File so = getTurnipSo();
+        if (so.exists() && so.length() > 0) {
+            long kb = so.length() / 1024;
+            statusView.setText("✅ Driver instalado: " + TURNIP_FILENAME + " (" + kb + " KB)");
+            statusView.setTextColor(Color.parseColor("#4CAF50"));
+        } else {
+            statusView.setText("● Driver: usando sistema (padrão — sem Turnip)");
+            statusView.setTextColor(Color.parseColor("#A0A0A0"));
+        }
+    }
+
+    /**
+     * Extracts the first .so entry found inside a ZIP stream and writes it
+     * to internalDataPath/turnip/libvulkan_freedreno.so.
+     * Returns true on success.
+     */
+    private boolean extractTurnipFromStream(InputStream inputStream, TextView statusView) {
+        File dir = getTurnipDir();
+        if (!dir.exists() && !dir.mkdirs()) {
+            Toast.makeText(this, "Falha ao criar pasta turnip/", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        File dest = getTurnipSo();
+        try (ZipInputStream zis = new ZipInputStream(inputStream)) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                String name = entry.getName();
+                // Accept any .so inside the ZIP, rename it to our target name
+                if (!entry.isDirectory() && name.endsWith(".so")) {
+                    android.util.Log.i("NFS-Turnip",
+                        "Extracting '" + name + "' -> " + dest.getAbsolutePath());
+                    try (FileOutputStream fos = new FileOutputStream(dest)) {
+                        byte[] buf = new byte[65536];
+                        int read;
+                        while ((read = zis.read(buf)) != -1) {
+                            fos.write(buf, 0, read);
+                        }
+                    }
+                    zis.closeEntry();
+                    refreshTurnipStatus(statusView);
+                    Toast.makeText(this,
+                        "✅ Driver Turnip instalado! Reinicie o jogo.",
+                        Toast.LENGTH_LONG).show();
+                    return true;
+                }
+                zis.closeEntry();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("NFS-Turnip", "ZIP extraction failed", e);
+            Toast.makeText(this,
+                "Erro ao extrair o ZIP: " + e.getMessage(),
+                Toast.LENGTH_LONG).show();
+            return false;
+        }
+        Toast.makeText(this,
+            "Nenhum arquivo .so encontrado no ZIP selecionado.",
+            Toast.LENGTH_LONG).show();
+        return false;
+    }
+
+    /** Deletes the currently installed Turnip driver. */
+    private void removeTurnipDriver(TextView statusView) {
+        File so = getTurnipSo();
+        if (!so.exists()) {
+            Toast.makeText(this, "Nenhum driver Turnip instalado.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Remover Driver Turnip")
+            .setMessage("Tem certeza? O driver de sistema (padrão) será usado na próxima execução.")
+            .setPositiveButton("Remover", (d, w) -> {
+                if (so.delete()) {
+                    refreshTurnipStatus(statusView);
+                    Toast.makeText(this,
+                        "Driver Turnip removido. Reinicie o jogo.",
+                        Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this,
+                        "Falha ao remover o driver.",
+                        Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("Cancelar", null)
+            .show();
+    }
+
     private void showSettingsDialog() {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_settings, null);
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
@@ -547,8 +684,8 @@ public class TitleActivity extends Activity {
         EditText etGamertag = dialogView.findViewById(R.id.et_gamertag);
 
         // Options arrays
-        final String[] resLabels = {"480p (854x480 - Mais Leve)", "540p (960x540)", "720p (1280x720 - Padrão)", "1080p (1920x1080 - Full HD)"};
-        final String[] resValues = {"480p", "540p", "720p", "1080p"};
+        final String[] resLabels = {"720p (1280x720 - Nativo Xbox 360)", "540p (960x540 - Modo Performance / +44% FPS)", "480p (854x480 - Mais Leve)", "1080p (1920x1080 - Full HD)"};
+        final String[] resValues = {"720p", "540p", "480p", "1080p"};
 
         final String[] scaleLabels = {"1x - Nativo (Mais rápido)", "2x - 1440p (Alta Nitidez)", "3x - 4K"};
         final int[] scaleValues = {1, 2, 3};
@@ -583,7 +720,7 @@ public class TitleActivity extends Activity {
 
         // Load saved values
         String curRes = prefs.getString(KEY_RESOLUTION, "720p");
-        spResolution.setSelection(findStringIndex(resValues, curRes, 2));
+        spResolution.setSelection(findStringIndex(resValues, curRes, 0));
 
         int curScale = prefs.getInt(KEY_RESOLUTION_SCALE, 1);
         spResolutionScale.setSelection(findIntIndex(scaleValues, curScale, 0));
@@ -594,11 +731,11 @@ public class TitleActivity extends Activity {
         int curThreads = prefs.getInt(KEY_PIPELINE_THREADS, 2);
         spPipelineThreads.setSelection(findIntIndex(threadValues, curThreads, 1));
 
-        int curCache = prefs.getInt(KEY_TEXTURE_CACHE_LIMIT, 512);
-        spTextureCacheLimit.setSelection(findIntIndex(cacheValues, curCache, 2));
+        int curCache = prefs.getInt(KEY_TEXTURE_CACHE_LIMIT, 256);
+        spTextureCacheLimit.setSelection(findIntIndex(cacheValues, curCache, 0));
 
-        int curAniso = prefs.getInt(KEY_ANISOTROPIC, 2);
-        spAnisotropic.setSelection(findIntIndex(anisoValues, curAniso, 2));
+        int curAniso = prefs.getInt(KEY_ANISOTROPIC, 1);
+        spAnisotropic.setSelection(findIntIndex(anisoValues, curAniso, 1));
 
         String curAa = prefs.getString(KEY_ANTIALIASING, "none");
         spAntialiasing.setSelection(findStringIndex(aaValues, curAa, 0));
@@ -635,6 +772,27 @@ public class TitleActivity extends Activity {
         });
 
         etGamertag.setText(prefs.getString(KEY_GAMERTAG, "Player"));
+
+        // Turnip driver section
+        TextView tvTurnipStatus = dialogView.findViewById(R.id.tv_turnip_status);
+        Button btnInstallTurnip = dialogView.findViewById(R.id.btn_install_turnip);
+        Button btnRemoveTurnip  = dialogView.findViewById(R.id.btn_remove_turnip);
+        refreshTurnipStatus(tvTurnipStatus);
+        if (btnInstallTurnip != null) {
+            btnInstallTurnip.setOnClickListener(v -> {
+                pendingTurnipStatusView = tvTurnipStatus;
+                Intent zipIntent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                zipIntent.addCategory(Intent.CATEGORY_OPENABLE);
+                zipIntent.setType("*/*");
+                zipIntent.putExtra(Intent.EXTRA_MIME_TYPES,
+                    new String[]{"application/zip", "application/x-zip-compressed",
+                                 "application/octet-stream", "*/*"});
+                startActivityForResult(zipIntent, REQ_CODE_TURNIP_ZIP);
+            });
+        }
+        if (btnRemoveTurnip != null) {
+            btnRemoveTurnip.setOnClickListener(v -> removeTurnipDriver(tvTurnipStatus));
+        }
 
         // Close button
         Button btnClose = dialogView.findViewById(R.id.btn_close_settings);
@@ -744,10 +902,10 @@ public class TitleActivity extends Activity {
             boolean asyncShaders = prefs.getBoolean(KEY_ASYNC_SHADERS, true);
             boolean asyncSkip = prefs.getBoolean(KEY_ASYNC_SKIP, false);
             int pipelineThreads = prefs.getInt(KEY_PIPELINE_THREADS, 2);
-            int textureCacheLimit = prefs.getInt(KEY_TEXTURE_CACHE_LIMIT, 512);
+            int textureCacheLimit = prefs.getInt(KEY_TEXTURE_CACHE_LIMIT, 256);
             boolean gpu3dTo2d = prefs.getBoolean(KEY_GPU_3D_TO_2D, true);
             boolean readback = prefs.getBoolean(KEY_READBACK_RESOLVE, false);
-            int aniso = prefs.getInt(KEY_ANISOTROPIC, 2);
+            int aniso = prefs.getInt(KEY_ANISOTROPIC, 1);
             String aa = prefs.getString(KEY_ANTIALIASING, "none");
             boolean nativeMsaa = prefs.getBoolean(KEY_NATIVE_MSAA, false);
             boolean mute = prefs.getBoolean(KEY_AUDIO_MUTE, false);

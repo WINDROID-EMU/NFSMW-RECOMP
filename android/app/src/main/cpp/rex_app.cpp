@@ -11,6 +11,8 @@
 
 #include <rex/rex_app.h>
 
+#include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <dlfcn.h>
 
@@ -94,30 +96,104 @@ struct ThreadStartArg {
   int detachstate;
 };
 
+// Reads a per-core capacity value from sysfs. Tries cpu_capacity first
+// (a normalized 0-1024 EAS metric present on most modern Android kernels),
+// then falls back to cpuinfo_max_freq (raw kHz) on kernels that don't
+// expose cpu_capacity. Returns -1 if neither file is readable for that core.
+static long ReadCoreCapacity(int core_index) {
+  char path[128];
+  snprintf(path, sizeof(path),
+           "/sys/devices/system/cpu/cpu%d/cpu_capacity", core_index);
+  FILE* f = fopen(path, "r");
+  if (!f) {
+    snprintf(path, sizeof(path),
+             "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq",
+             core_index);
+    f = fopen(path, "r");
+  }
+  if (!f) {
+    return -1;
+  }
+  long value = -1;
+  if (fscanf(f, "%ld", &value) != 1) {
+    value = -1;
+  }
+  fclose(f);
+  return value;
+}
+
+// Builds (once) the affinity mask of the fastest cores on this device by
+// reading real per-core capacity from sysfs, instead of assuming a fixed
+// Snapdragon-style core layout. Falls back to "top half of cores" if the
+// kernel exposes no capacity info at all (some MediaTek/older kernels).
+static cpu_set_t BuildFastCoreAffinityMask(int num_cores) {
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+
+  if (num_cores <= 1) {
+    if (num_cores == 1) CPU_SET(0, &cpuset);
+    return cpuset;
+  }
+
+  long capacities[CPU_SETSIZE];
+  long max_capacity = -1;
+  bool have_any_capacity = false;
+  int usable_cores = std::min(num_cores, CPU_SETSIZE);
+
+  for (int i = 0; i < usable_cores; ++i) {
+    capacities[i] = ReadCoreCapacity(i);
+    if (capacities[i] > 0) {
+      have_any_capacity = true;
+      max_capacity = std::max(max_capacity, capacities[i]);
+    }
+  }
+
+  if (!have_any_capacity) {
+    // Sysfs gave us nothing usable on this device/kernel - fall back to the
+    // old heuristic (top half of cores by index) rather than pinning to
+    // core 0 only.
+    for (int i = num_cores / 2; i < num_cores; ++i) {
+      CPU_SET(i, &cpuset);
+    }
+    return cpuset;
+  }
+
+  // Select every core whose capacity is within 15% of the fastest core on
+  // the device. On a typical 1+3+4 or 1+5+2 big.LITTLE/tri-gear layout this
+  // captures the Prime + Gold cores and excludes the LITTLE/efficiency
+  // cores, regardless of which physical index they sit at.
+  const long threshold = static_cast<long>(max_capacity * 0.85);
+  for (int i = 0; i < usable_cores; ++i) {
+    if (capacities[i] >= threshold) {
+      CPU_SET(i, &cpuset);
+    }
+  }
+
+  // Safety net: never end up with an empty mask (e.g. odd sysfs values).
+  if (CPU_COUNT(&cpuset) == 0) {
+    for (int i = num_cores / 2; i < num_cores; ++i) {
+      CPU_SET(i, &cpuset);
+    }
+  }
+
+  return cpuset;
+}
+
 static void ConfigurePerformanceThread() {
   // Elevate calling thread priority (nice -10 for high performance game thread).
   // Use gettid() instead of 0 to avoid altering the entire process nice value.
   setpriority(PRIO_PROCESS, gettid(), -10);
 
-  // Set CPU affinity to Big + Prime cores for the main game thread.
+  // Set CPU affinity to the fastest (Big + Prime) cores for the main game
+  // thread, detected from real per-core capacity rather than assumed by
+  // index - the previous fixed "cores 4..7 are big" heuristic only holds on
+  // a subset of Snapdragon 8-core layouts and silently pins the heaviest
+  // thread in the process (the PPC game loop) onto LITTLE cores on many
+  // other chips (MediaTek, Exynos, mid-range Snapdragon), which reads to
+  // the user as the whole engine running slow.
   int num_cores = sysconf(_SC_NPROCESSORS_CONF);
   if (num_cores > 1) {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    if (num_cores >= 8) {
-      // Typically on Snapdragon 8-core: cores 4, 5, 6 are Gold/Big and 7 is Prime
-      for (int i = 4; i < num_cores; ++i) {
-        CPU_SET(i, &cpuset);
-      }
-    } else if (num_cores >= 4) {
-      for (int i = num_cores / 2; i < num_cores; ++i) {
-        CPU_SET(i, &cpuset);
-      }
-    } else {
-      for (int i = 0; i < num_cores; ++i) {
-        CPU_SET(i, &cpuset);
-      }
-    }
+    cpu_set_t cpuset = BuildFastCoreAffinityMask(num_cores);
     sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
   }
 }

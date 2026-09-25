@@ -11,7 +11,7 @@
 #define REXGLUE_VERSION_CHANNEL "dev"
 
 #define REXGLUE_BUILD_PLATFORM "android-arm64"
-#define REXGLUE_BUILD_TIMESTAMP "20260923_2148"
+#define REXGLUE_BUILD_TIMESTAMP "20260925_0221"
 
 // Requires REXGLUE_BUILD_CONFIG compile definition
 // Title: "[rexglue-v0.7.5.38-dev.gb27f3f74-Release]"

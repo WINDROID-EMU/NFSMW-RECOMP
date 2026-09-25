@@ -15,6 +15,7 @@
 #include "input/android_input_driver.h"
 #include "vfs/android_storage.h"
 #include "nfsmw_android_app.h"
+#include "vulkan_driver_loader.h"
 
 #define TAG "NFS-MainAndroid"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
@@ -121,6 +122,20 @@ int32_t OnInputEvent(struct android_app* app, AInputEvent* event) {
 void android_main(struct android_app* state) {
   LOGI("=== Need for Speed: Most Wanted (Pure Android NDK) Starting ===");
 
+  // ── Turnip / Mesa custom Vulkan driver ────────────────────────────────────
+  // Must run before ANY Vulkan call or SDK init. If libadrenotools.so is
+  // bundled in the APK and the user placed libvulkan_freedreno.so inside
+  // <internalDataPath>/turnip/, the stock driver is replaced transparently.
+  // Falls back silently to the system driver if anything is missing.
+  {
+    bool turnip_loaded = nfsmw::android::TryLoadCustomVulkanDriver(state);
+    if (turnip_loaded) {
+      LOGI("[Vulkan] Turnip/Mesa driver active — shaderInt64 + BDA guaranteed");
+    } else {
+      LOGI("[Vulkan] Using stock system driver (Turnip not installed or not available)");
+    }
+  }
+
   if (state && state->activity && state->activity->vm && state->activity->clazz) {
     rex::input::android::RegisterVirtualGamepadJNI(state->activity->vm, state->activity->clazz);
   }
@@ -158,21 +173,25 @@ void android_main(struct android_app* state) {
   rex::cvar::SetFlagByName("gamma_render_target_as_unorm16", "false");
   rex::cvar::SetFlagByName("depth_transfer_not_equal_test", "false");
   rex::cvar::SetFlagByName("clear_memory_page_state", "false");
-  rex::cvar::SetFlagByName("texture_cache_memory_limit_render_to_texture", "96");
-  rex::cvar::SetFlagByName("texture_cache_memory_limit_soft", "512");
+  // Mobile devices have less unified memory bandwidth than desktop GPUs.
+  // Android limits are kept below desktop defaults (24/384 MB), not above them.
+  // Previous values (96/512 MB) were backwards and caused memory contention.
+  rex::cvar::SetFlagByName("texture_cache_memory_limit_render_to_texture", "16");
+  rex::cvar::SetFlagByName("texture_cache_memory_limit_soft", "256");
   rex::cvar::SetFlagByName("vulkan_pipeline_creation_threads", "2");
   rex::cvar::SetFlagByName("store_shaders", "true");
   rex::cvar::SetFlagByName("vsync", "true");
   rex::cvar::SetFlagByName("mnk_mode", "false");
   rex::cvar::SetFlagByName("present_letterbox", "false");
 
-  // 1280x720 Native Xbox 360 resolution fits within Adreno 650 8MB GMEM on-chip tile memory
+  // 1280x720 Native Xbox 360 resolution fits within Adreno 650/730 GMEM on-chip tile memory
   rex::cvar::SetFlagByName("video_mode_width", "1280");
   rex::cvar::SetFlagByName("video_mode_height", "720");
   rex::cvar::SetFlagByName("resolution_scale", "1");
-  rex::cvar::SetFlagByName("anisotropic_override", "2");
+  rex::cvar::SetFlagByName("anisotropic_override", "1");
 
   // Adreno performance & logging optimizations
+  rex::cvar::SetFlagByName("primitive_processor_cache_min_indices", "-1");
   rex::cvar::SetFlagByName("vulkan_validation_enabled", "false");
   rex::cvar::SetFlagByName("vulkan_log_debug_messages", "false");
   rex::cvar::SetFlagByName("gpu_allow_invalid_fetch_constants", "true");
