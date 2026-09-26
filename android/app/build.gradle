@@ -11,13 +11,13 @@ plugins {
 // para jniLibs/ antes de qualquer assemblagem, garantindo que linkagem e
 // empacotamento sempre usem os mesmos binários.
 // ─────────────────────────────────────────────────────────────────────────────
-def sdkLibDir   = file("${rootDir}/../CMakeLists.txt").parentFile  // android/
-def rexglueSdk  = file("${sdkLibDir}/rexglue-sdk/lib")
+def rexglueSdk  = file("${rootDir}/rexglue-sdk/lib")
 def jniLibsDir  = file("${projectDir}/src/main/jniLibs/arm64-v8a")
 
 def rexSoFiles = [
     "librexruntime.so",
     "librexgpu-xenos.so",
+    "librexgpu-plume.so",
 ]
 
 tasks.register("syncRexGlueSoLibs") {

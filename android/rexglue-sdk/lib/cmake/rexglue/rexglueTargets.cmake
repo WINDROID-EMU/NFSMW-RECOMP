@@ -19,7 +19,7 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set(_cmake_targets_defined "")
 set(_cmake_targets_not_defined "")
 set(_cmake_expected_targets "")
-foreach(_cmake_expected_target IN ITEMS rex::runtime rex::gpu-xenos rex::disruptorplus rex::renderdoc rex::simde rex::tomlplusplus rex::aes128 rex::mspack rex::o1heap rex::disasm rex::xxhash rex::libavcodec rex::libavutil rex::SPIRV rex::glslang rex::MachineIndependent rex::GenericCodeGen rex::OSDependent rex::OGLCompiler rex::spirv-tools-headers rex::rexglue)
+foreach(_cmake_expected_target IN ITEMS rex::runtime rex::gpu-xenos rex::gpu-plume rex::disruptorplus rex::renderdoc rex::simde rex::tomlplusplus rex::aes128 rex::mspack rex::o1heap rex::disasm rex::xxhash rex::libavcodec rex::libavutil rex::SPIRV rex::glslang rex::MachineIndependent rex::GenericCodeGen rex::OSDependent rex::OGLCompiler rex::spirv-tools-headers rex::rexglue)
   list(APPEND _cmake_expected_targets "${_cmake_expected_target}")
   if(TARGET "${_cmake_expected_target}")
     list(APPEND _cmake_targets_defined "${_cmake_expected_target}")
@@ -66,6 +66,9 @@ set_target_properties(rex::runtime PROPERTIES
 
 # Create imported target rex::gpu-xenos
 add_library(rex::gpu-xenos SHARED IMPORTED)
+
+# Create imported target rex::gpu-plume
+add_library(rex::gpu-plume SHARED IMPORTED)
 
 # Create imported target rex::disruptorplus
 add_library(rex::disruptorplus INTERFACE IMPORTED)

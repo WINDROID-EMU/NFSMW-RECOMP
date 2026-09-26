@@ -134,7 +134,7 @@ REXCVAR_DEFINE_STRING(gpu_backend, "d3d12", "GPU",
                       "Graphics API: d3d12 or vulkan. Takes effect on restart. If the one "
                       "you pick was not built into this copy, the game falls back to the "
                       "other one and says so in the log.")
-    .allowed({"d3d12", "vulkan"})
+    .allowed({"d3d12", "vulkan", "plume"})
     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
 
 """

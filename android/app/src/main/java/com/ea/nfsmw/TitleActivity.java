@@ -43,6 +43,7 @@ public class TitleActivity extends Activity {
 
     private static final String PREFS_NAME = "NFSMW_PREFS";
     private static final String KEY_ROM_PATH = "game_rom_path";
+    private static final String KEY_GPU_PLUGIN = "cfg_gpu_plugin";
     private static final String KEY_RESOLUTION = "cfg_resolution";
     private static final String KEY_RESOLUTION_SCALE = "cfg_resolution_scale";
     private static final String KEY_VSYNC = "cfg_vsync";
@@ -658,6 +659,7 @@ public class TitleActivity extends Activity {
         // Spinners
         Spinner spResolution = dialogView.findViewById(R.id.sp_resolution);
         Spinner spResolutionScale = dialogView.findViewById(R.id.sp_resolution_scale);
+        Spinner spGpuPlugin = dialogView.findViewById(R.id.sp_gpu_plugin);
         Spinner spEdramPath = dialogView.findViewById(R.id.sp_edram_path);
         Spinner spPipelineThreads = dialogView.findViewById(R.id.sp_pipeline_threads);
         Spinner spTextureCacheLimit = dialogView.findViewById(R.id.sp_texture_cache_limit);
@@ -690,6 +692,9 @@ public class TitleActivity extends Activity {
         final String[] scaleLabels = {"1x - Nativo (Mais rápido)", "2x - 1440p (Alta Nitidez)", "3x - 4K"};
         final int[] scaleValues = {1, 2, 3};
 
+        final String[] pluginLabels = {"Plume (Vulkan Nativo - Rápido)", "Xenos (Vulkan Emulado)"};
+        final String[] pluginValues = {"plume", "xenos"};
+
         final String[] edramLabels = {"rtv (FBO Host - Rápido / Recomendado)", "rov (Pixel Shader Interlock - Lento)"};
         final String[] edramValues = {"rtv", "rov"};
 
@@ -711,6 +716,7 @@ public class TitleActivity extends Activity {
         // Set adapters
         setupSpinner(spResolution, resLabels);
         setupSpinner(spResolutionScale, scaleLabels);
+        setupSpinner(spGpuPlugin, pluginLabels);
         setupSpinner(spEdramPath, edramLabels);
         setupSpinner(spPipelineThreads, threadLabels);
         setupSpinner(spTextureCacheLimit, cacheLabels);
@@ -724,6 +730,9 @@ public class TitleActivity extends Activity {
 
         int curScale = prefs.getInt(KEY_RESOLUTION_SCALE, 1);
         spResolutionScale.setSelection(findIntIndex(scaleValues, curScale, 0));
+
+        String curPlugin = prefs.getString(KEY_GPU_PLUGIN, "plume");
+        spGpuPlugin.setSelection(findStringIndex(pluginValues, curPlugin, 0));
 
         String curEdram = prefs.getString(KEY_EDRAM_PATH, "rtv");
         spEdramPath.setSelection(findStringIndex(edramValues, curEdram, 0));
@@ -806,6 +815,7 @@ public class TitleActivity extends Activity {
             btnReset.setOnClickListener(v -> {
                 spResolution.setSelection(2);
                 spResolutionScale.setSelection(0);
+                spGpuPlugin.setSelection(0);
                 spEdramPath.setSelection(0);
                 spPipelineThreads.setSelection(1);
                 spTextureCacheLimit.setSelection(2);
@@ -835,6 +845,7 @@ public class TitleActivity extends Activity {
             btnSave.setOnClickListener(v -> {
                 String selRes = resValues[spResolution.getSelectedItemPosition()];
                 int selScale = scaleValues[spResolutionScale.getSelectedItemPosition()];
+                String selPlugin = pluginValues[spGpuPlugin.getSelectedItemPosition()];
                 String selEdram = edramValues[spEdramPath.getSelectedItemPosition()];
                 int selThreads = threadValues[spPipelineThreads.getSelectedItemPosition()];
                 int selCache = cacheValues[spTextureCacheLimit.getSelectedItemPosition()];
@@ -860,6 +871,7 @@ public class TitleActivity extends Activity {
                 prefs.edit()
                         .putString(KEY_RESOLUTION, selRes)
                         .putInt(KEY_RESOLUTION_SCALE, selScale)
+                        .putString(KEY_GPU_PLUGIN, selPlugin)
                         .putString(KEY_EDRAM_PATH, selEdram)
                         .putInt(KEY_PIPELINE_THREADS, selThreads)
                         .putInt(KEY_TEXTURE_CACHE_LIMIT, selCache)
@@ -896,6 +908,7 @@ public class TitleActivity extends Activity {
 
             String res = prefs.getString(KEY_RESOLUTION, "720p");
             int scale = prefs.getInt(KEY_RESOLUTION_SCALE, 1);
+            String plugin = prefs.getString(KEY_GPU_PLUGIN, "plume");
             boolean vsync = prefs.getBoolean(KEY_VSYNC, true);
             boolean stretchScreen = prefs.getBoolean(KEY_STRETCH_SCREEN, true);
             String edram = prefs.getString(KEY_EDRAM_PATH, "rtv");
@@ -938,7 +951,8 @@ public class TitleActivity extends Activity {
             toml.append("vulkan_submit_on_primary_buffer_end = false").append((char) 10);
             toml.append("vulkan_dynamic_rendering = true").append((char) 10);
             toml.append("gpu_backend = ").append((char) 34).append("vulkan").append((char) 34).append((char) 10);
-            toml.append("gpu = ").append((char) 34).append("xenos").append((char) 34).append((char) 10).append((char) 10);
+            toml.append("gpu_plugin = ").append((char) 34).append(plugin).append((char) 34).append((char) 10);
+            toml.append("gpu = ").append((char) 34).append(plugin).append((char) 34).append((char) 10).append((char) 10);
 
             toml.append("video_mode_width = ").append(width).append((char) 10);
             toml.append("video_mode_height = ").append(height).append((char) 10);

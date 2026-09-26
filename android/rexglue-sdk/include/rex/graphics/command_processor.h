@@ -13,6 +13,7 @@
 
 #include <atomic>
 #include <cstring>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -23,6 +24,7 @@
 
 #include <rex/graphics/register_file.h>
 #include <rex/graphics/registers.h>
+#include <rex/graphics/pm4_plume_transpiler.h>
 #include <rex/graphics/xenos.h>
 #include <rex/memory.h>
 #include <rex/memory/ring_buffer.h>
@@ -213,6 +215,8 @@ class CommandProcessor {
   bool ExecutePacketType3_INVALIDATE_STATE(memory::RingBuffer* reader, uint32_t packet,
                                            uint32_t count);
   bool ExecutePacketType3_VIZ_QUERY(memory::RingBuffer* reader, uint32_t packet, uint32_t count);
+  void TracePacket(uint32_t opcode, uint32_t packet, uint32_t count, uint32_t data_offset,
+                   bool result);
 
   virtual Shader* LoadShader(xenos::ShaderType shader_type, uint32_t guest_address,
                              const uint32_t* host_address, uint32_t dword_count) = 0;
@@ -281,6 +285,10 @@ class CommandProcessor {
   reg::DC_LUT_30_COLOR gamma_ramp_256_entry_table_[256] = {};
   reg::DC_LUT_PWL_DATA gamma_ramp_pwl_rgb_[128][3] = {};
   uint32_t gamma_ramp_rw_component_ = 0;
+  std::unique_ptr<std::ofstream> pm4_trace_file_;
+  uint64_t pm4_trace_sequence_ = 0;
+  uint32_t pm4_trace_frame_ = 0;
+  Pm4PlumeTranspiler pm4_plume_transpiler_;
 };
 
 }  // namespace rex::graphics

@@ -163,56 +163,64 @@ void android_main(struct android_app* state) {
   const char* external_path = state->activity->externalDataPath ? state->activity->externalDataPath : "";
   rex::vfs::android::AndroidStorage::Initialize(internal_path, external_path);
 
-  // Set default baseline flags for Android mobile platform (Adreno 650 TBR / GMEM optimized)
-  rex::cvar::SetFlagByName("gpu_backend", "vulkan");
-  rex::cvar::SetFlagByName("gpu_plugin", "xenos");
-  rex::cvar::SetFlagByName("render_target_path_d3d12", "rtv");
-  rex::cvar::SetFlagByName("render_target_path_vulkan", "fbo");
-  rex::cvar::SetFlagByName("readback_resolve", "fast");
-  rex::cvar::SetFlagByName("async_shader_compilation", "true");
-  rex::cvar::SetFlagByName("vulkan_async_skip_incomplete_frames", "false");
-  rex::cvar::SetFlagByName("vulkan_submit_on_primary_buffer_end", "false");
-  rex::cvar::SetFlagByName("vulkan_dynamic_rendering", "true");
-  rex::cvar::SetFlagByName("native_2x_msaa", "false");
-  rex::cvar::SetFlagByName("gamma_render_target_as_unorm16", "false");
-  rex::cvar::SetFlagByName("depth_transfer_not_equal_test", "false");
-  rex::cvar::SetFlagByName("clear_memory_page_state", "false");
-  // Mobile devices have less unified memory bandwidth than desktop GPUs.
-  // Android limits are kept below desktop defaults (24/384 MB), not above them.
-  // Previous values (96/512 MB) were backwards and caused memory contention.
-  rex::cvar::SetFlagByName("texture_cache_memory_limit_render_to_texture", "16");
-  rex::cvar::SetFlagByName("texture_cache_memory_limit_soft", "256");
-  rex::cvar::SetFlagByName("vulkan_pipeline_creation_threads", "2");
-  rex::cvar::SetFlagByName("store_shaders", "true");
-  rex::cvar::SetFlagByName("vsync", "true");
-  rex::cvar::SetFlagByName("mnk_mode", "false");
-  rex::cvar::SetFlagByName("present_letterbox", "false");
-
-  // 1280x720 Native Xbox 360 resolution fits within Adreno 650/730 GMEM on-chip tile memory
-  rex::cvar::SetFlagByName("video_mode_width", "1280");
-  rex::cvar::SetFlagByName("video_mode_height", "720");
-  rex::cvar::SetFlagByName("resolution_scale", "1");
-  rex::cvar::SetFlagByName("anisotropic_override", "1");
-
-  // Adreno performance & logging optimizations
-  rex::cvar::SetFlagByName("query_occlusion_fake_sample_count", "1");
-  rex::cvar::SetFlagByName("primitive_processor_cache_min_indices", "-1");
-  rex::cvar::SetFlagByName("vulkan_validation_enabled", "false");
-  rex::cvar::SetFlagByName("vulkan_log_debug_messages", "false");
-  rex::cvar::SetFlagByName("gpu_allow_invalid_fetch_constants", "true");
-  rex::cvar::SetFlagByName("log_level", "info");
-  rex::cvar::SetFlagByName("log_file", "");
-  rex::cvar::SetFlagByName("log_noisy", "false");
-  rex::cvar::SetFlagByName("log_verbose", "false");
-  rex::cvar::SetFlagByName("protect_zero", "false");
-
-  // Optional user overrides (nfsmw.toml in storage directory)
+  // Optional user overrides (nfsmw.toml in storage directory) loaded before defaults
   if (external_path && external_path[0]) {
     rex::cvar::LoadConfig(std::filesystem::path(external_path) / "nfsmw.toml");
   }
   if (internal_path && internal_path[0]) {
     rex::cvar::LoadConfig(std::filesystem::path(internal_path) / "nfsmw.toml");
   }
+
+  // Set default baseline flags for Android mobile platform only if not already specified by config
+  auto SetDefaultFlag = [](std::string_view name, std::string_view val) {
+    if (rex::cvar::GetFlagSource(name) == rex::cvar::Source::kDefault) {
+      rex::cvar::SetFlagByName(name, val);
+    }
+  };
+
+  SetDefaultFlag("gpu_backend", "vulkan");
+  SetDefaultFlag("gpu_plugin", "xenos");
+  SetDefaultFlag("render_target_path_d3d12", "rtv");
+  SetDefaultFlag("render_target_path_vulkan", "fbo");
+  SetDefaultFlag("readback_resolve", "fast");
+  SetDefaultFlag("async_shader_compilation", "true");
+  SetDefaultFlag("vulkan_async_skip_incomplete_frames", "false");
+  SetDefaultFlag("vulkan_submit_on_primary_buffer_end", "false");
+  SetDefaultFlag("vulkan_dynamic_rendering", "true");
+  SetDefaultFlag("native_2x_msaa", "false");
+  SetDefaultFlag("gamma_render_target_as_unorm16", "false");
+  SetDefaultFlag("depth_transfer_not_equal_test", "false");
+  SetDefaultFlag("clear_memory_page_state", "false");
+  // Mobile devices have less unified memory bandwidth than desktop GPUs.
+  // Android limits are kept below desktop defaults (24/384 MB), not above them.
+  // Previous values (96/512 MB) were backwards and caused memory contention.
+  SetDefaultFlag("texture_cache_memory_limit_render_to_texture", "16");
+  SetDefaultFlag("texture_cache_memory_limit_soft", "256");
+  SetDefaultFlag("vulkan_pipeline_creation_threads", "2");
+  SetDefaultFlag("store_shaders", "true");
+  SetDefaultFlag("vsync", "true");
+  SetDefaultFlag("mnk_mode", "false");
+  SetDefaultFlag("present_letterbox", "false");
+
+  // 1280x720 Native Xbox 360 resolution fits within Adreno 650/730 GMEM on-chip tile memory
+  SetDefaultFlag("video_mode_width", "1280");
+  SetDefaultFlag("video_mode_height", "720");
+  SetDefaultFlag("resolution_scale", "1");
+  SetDefaultFlag("anisotropic_override", "1");
+
+  // Adreno performance & logging optimizations
+  SetDefaultFlag("query_occlusion_fake_sample_count", "1");
+  SetDefaultFlag("primitive_processor_cache_min_indices", "-1");
+  SetDefaultFlag("vulkan_validation_enabled", "false");
+  SetDefaultFlag("vulkan_log_debug_messages", "false");
+  SetDefaultFlag("gpu_allow_invalid_fetch_constants", "true");
+  SetDefaultFlag("log_level", "info");
+  SetDefaultFlag("log_file", "");
+  SetDefaultFlag("log_noisy", "false");
+  SetDefaultFlag("log_verbose", "false");
+  SetDefaultFlag("protect_zero", "false");
+
+  LOGI("Effective GPU plugin cvar: %s", rex::cvar::GetFlagByName("gpu_plugin").c_str());
 
   rex::InitLoggingEarly();
 

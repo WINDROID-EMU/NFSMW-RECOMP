@@ -144,6 +144,7 @@ echo "[2/3] Validando SDK em: $INSTALL_DIR ..."
 REQUIRED_FILES=(
     "lib/librexruntime.so"
     "lib/librexgpu-xenos.so"
+    "lib/librexgpu-plume.so"
     "lib/cmake/rexglue/rexglueConfig.cmake"
     "include"
 )
@@ -175,7 +176,7 @@ cp -r "${INSTALL_DIR}/." "$SDK_DEST/"
 # Confirma as .so-chave
 echo ""
 echo "  Bibliotecas copiadas:"
-for so in librexruntime.so librexgpu-xenos.so; do
+for so in librexruntime.so librexgpu-xenos.so librexgpu-plume.so; do
     src="${INSTALL_DIR}/lib/${so}"
     dst="${SDK_DEST}/lib/${so}"
     if [ -f "$dst" ]; then

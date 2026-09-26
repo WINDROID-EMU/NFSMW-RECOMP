@@ -149,6 +149,30 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="6dp" />
 
+            <!-- GPU Backend Plugin -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Backend Gráfico (Emulador de GPU):"
+                android:textColor="#E0E0E0"
+                android:textSize="12sp"
+                android:layout_marginBottom="2dp" />
+
+            <Spinner
+                android:id="@+id/sp_gpu_plugin"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:background="@drawable/spinner_bg"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ℹ 'Plume' é a reescrita nativa (Vulkan) mais rápida. 'Xenos' usa emulação original."
+                android:textColor="#A0A0A0"
+                android:textSize="10sp"
+                android:layout_marginBottom="10dp" />
+
             <!-- Caminho da EDRAM -->
             <TextView
                 android:layout_width="wrap_content"

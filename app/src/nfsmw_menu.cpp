@@ -401,9 +401,15 @@ void NfsmwMenuDialog::OnDraw(ImGuiIO& io) {
     if (ExisteCvar("gpu_backend")) {
       static const Opcion kApi[] = {
           {"Vulkan (Recomendado para Linux e Android)", "vulkan"},
-          {"Direct3D 12 (Nativo Windows)", "d3d12"}};
-      ComboSimple("API Gráfica (Backend)", CvarS("gpu_backend"), kApi, 2, nullptr, [this](const char* v) {
+          {"Direct3D 12 (Nativo Windows)", "d3d12"},
+          {"Plume (Novo Backend experimental)", "plume"}};
+      ComboSimple("API Gráfica (Backend)", CvarS("gpu_backend"), kApi, 3, nullptr, [this](const char* v) {
         SetCvarS("gpu_backend", v);
+        if (std::string(v) == "plume") {
+          SetCvarS("gpu_plugin", "plume");
+        } else {
+          SetCvarS("gpu_plugin", "xenos");
+        }
         Persistir();
       });
       MarcaReinicio();

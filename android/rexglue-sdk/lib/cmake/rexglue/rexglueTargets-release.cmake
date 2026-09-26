@@ -26,6 +26,17 @@ set_target_properties(rex::gpu-xenos PROPERTIES
 list(APPEND _cmake_import_check_targets rex::gpu-xenos )
 list(APPEND _cmake_import_check_files_for_rex::gpu-xenos "${_IMPORT_PREFIX}/lib/librexgpu-xenos.so" )
 
+# Import target "rex::gpu-plume" for configuration "Release"
+set_property(TARGET rex::gpu-plume APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(rex::gpu-plume PROPERTIES
+  IMPORTED_LINK_DEPENDENT_LIBRARIES_RELEASE "rex::runtime"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/librexgpu-plume.so"
+  IMPORTED_SONAME_RELEASE "librexgpu-plume.so"
+  )
+
+list(APPEND _cmake_import_check_targets rex::gpu-plume )
+list(APPEND _cmake_import_check_files_for_rex::gpu-plume "${_IMPORT_PREFIX}/lib/librexgpu-plume.so" )
+
 # Import target "rex::aes128" for configuration "Release"
 set_property(TARGET rex::aes128 APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(rex::aes128 PROPERTIES

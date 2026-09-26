@@ -880,12 +880,17 @@ bool ReXApp::SetupPresentation() {
 
   if (!config_.graphics && !config_.gpu_plugin.empty()) {
 #if defined(__ANDROID__)
-    void* handle = dlopen("librexgpu-xenos.so", RTLD_NOW);
+    std::string plugin_to_load = config_.gpu_plugin;
+    std::string lib_name = fmt::format("librexgpu-{}.so", plugin_to_load);
+    REXLOG_INFO("Android: Attempting to load GPU plugin '{}' ({})", plugin_to_load, lib_name);
+    void* handle = dlopen(lib_name.c_str(), RTLD_NOW);
     if (!handle) {
-      handle = dlopen("librexgpu-xenosrd.so", RTLD_NOW);
+      lib_name = fmt::format("librexgpu-{}rd.so", plugin_to_load);
+      handle = dlopen(lib_name.c_str(), RTLD_NOW);
     }
     if (!handle) {
-      handle = dlopen("librexgpu-xenosd.so", RTLD_NOW);
+      lib_name = fmt::format("librexgpu-{}d.so", plugin_to_load);
+      handle = dlopen(lib_name.c_str(), RTLD_NOW);
     }
     if (handle) {
       auto abi_fn = reinterpret_cast<rex::system::GpuAbiVersionFn>(
@@ -898,9 +903,43 @@ bool ReXApp::SetupPresentation() {
         info.backend = "vulkan";
         config_.graphics = std::unique_ptr<rex::system::IGraphicsSystem>(
             create_fn(rex::system::kGpuPluginAbiVersion, &info));
-        REXLOG_INFO("Android: Successfully loaded GPU plugin (xenos/vulkan) via dlopen");
+        if (config_.graphics) {
+          REXLOG_INFO("Android: Successfully loaded GPU plugin ({}/vulkan) via dlopen ({})",
+                      plugin_to_load, lib_name);
+        } else {
+          REXLOG_ERROR("Android: create_fn returned null for GPU plugin '{}'", plugin_to_load);
+        }
+      } else {
+        REXLOG_ERROR("Android: Missing symbols in plugin '{}': abi_fn={}, create_fn={}",
+                     plugin_to_load, (void*)abi_fn, (void*)create_fn);
+      }
+    } else {
+      REXLOG_ERROR("Android: dlopen failed for GPU plugin '{}' ({}): {}", plugin_to_load, lib_name, dlerror());
+    }
+
+    if (!config_.graphics && plugin_to_load != "xenos") {
+      REXLOG_WARN("Android: Primary GPU plugin '{}' failed to load, falling back to 'xenos'", plugin_to_load);
+      handle = dlopen("librexgpu-xenos.so", RTLD_NOW);
+      if (!handle) handle = dlopen("librexgpu-xenosrd.so", RTLD_NOW);
+      if (!handle) handle = dlopen("librexgpu-xenosd.so", RTLD_NOW);
+      if (handle) {
+        auto abi_fn = reinterpret_cast<rex::system::GpuAbiVersionFn>(
+            dlsym(handle, rex::system::kGpuAbiVersionSymbol));
+        auto create_fn = reinterpret_cast<rex::system::GpuCreateFn>(
+            dlsym(handle, rex::system::kGpuCreateSymbol));
+        if (abi_fn && create_fn) {
+          rex::system::GpuCreateInfo info{};
+          info.struct_size = sizeof(rex::system::GpuCreateInfo);
+          info.backend = "vulkan";
+          config_.graphics = std::unique_ptr<rex::system::IGraphicsSystem>(
+              create_fn(rex::system::kGpuPluginAbiVersion, &info));
+          if (config_.graphics) {
+            REXLOG_INFO("Android: Successfully loaded fallback GPU plugin (xenos/vulkan)");
+          }
+        }
       }
     }
+
     if (!config_.graphics) {
       config_.graphics = rex::system::LoadGpuPlugin(config_.gpu_plugin);
     }
