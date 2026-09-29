@@ -21,6 +21,16 @@ assets/
 # Se deriva del XEX, asi que tampoco se distribuye.
 generated/
 app/generated/
+app/generated-android/
+
+# --- Android -----------------------------------------------------------------
+# El APK con el juego lleva dentro el codigo traducido: cuenta como el juego.
+*.apk
+*.aab
+android/.gradle/
+android/.kotlin/
+android/app/.cxx/
+android/local.properties
 
 # --- Compilacion -------------------------------------------------------------
 out/
@@ -78,3 +88,14 @@ __pycache__/
 # Los parches actuales aplican y revierten por texto y no dejan .original, pero
 # algunos del SDK todavia los generan.
 *.original
+
+*.apk
+*.iso
+diff.txt
+logcat_dump.txt
+logcat_full.txt
+
+# --- Copias sueltas ----------------------------------------------------------
+# Un clon de libadrenotools que no usa nadie: el build toma el del SDK
+# preparado (tools/android/preparar_sdk.py, paso 4).
+android/app/src/main/cpp/libadrenotools/

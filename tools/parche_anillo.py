@@ -67,6 +67,7 @@ pregunta se contesta sola.
 """
 
 import argparse
+import os
 import pathlib
 import shutil
 import sys
@@ -267,7 +268,12 @@ ANCLAS = ([("cabeceras", CAB_ANCLA, CAB_NUEVO),
 
 def localizar_sdk():
     raiz = pathlib.Path(__file__).resolve().parent.parent
-    for cand in [raiz.parent / "rexglue-sdk", raiz / "sdk"]:
+    # NFSMW_SDK apunta a otro arbol del SDK (el de Android, por ejemplo). Si
+    # esta puesta se usa SOLO esa ruta: caer en silencio en el SDK de Windows
+    # parchearia el arbol equivocado.
+    otro = os.environ.get("NFSMW_SDK")
+    candidatos = [pathlib.Path(otro)] if otro else [raiz.parent / "rexglue-sdk", raiz / "sdk"]
+    for cand in candidatos:
         if (cand / "src" / "audio" / "xma_context.cpp").exists():
             return cand
     sys.exit("[ERROR] No encuentro el SDK. Se busca en ..\\rexglue-sdk y en .\\sdk")

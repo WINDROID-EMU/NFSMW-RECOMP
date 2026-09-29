@@ -67,6 +67,7 @@ ultimo tramo girando, porque Sleep en Windows tiene una granularidad de entre
 """
 
 import argparse
+import os
 import pathlib
 import shutil
 import sys
@@ -175,7 +176,12 @@ NUEVO_INC = """#include <algorithm>
 
 def localizar_sdk():
     raiz = pathlib.Path(__file__).resolve().parent.parent
-    for cand in [raiz.parent / "rexglue-sdk", raiz / "sdk"]:
+    # NFSMW_SDK apunta a otro arbol del SDK (el de Android, por ejemplo). Si
+    # esta puesta se usa SOLO esa ruta: caer en silencio en el SDK de Windows
+    # parchearia el arbol equivocado.
+    otro = os.environ.get("NFSMW_SDK")
+    candidatos = [pathlib.Path(otro)] if otro else [raiz.parent / "rexglue-sdk", raiz / "sdk"]
+    for cand in candidatos:
         f = cand / "src" / "ui" / "d3d12" / "d3d12_presenter.cpp"
         if f.exists():
             return f

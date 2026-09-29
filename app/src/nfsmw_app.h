@@ -9,8 +9,10 @@
 #include <rex/logging.h>
 #include <rex/rex_app.h>
 #include <rex/ui/overlay/debug_overlay.h>
-#include <rex/system/kernel_state.h>  // VIGILANTE DE CUELGUES
-#include <rex/system/xthread.h>       // VIGILANTE DE CUELGUES
+#include <rex/system/kernel_state.h>       // VIGILANTE DE CUELGUES
+#include <rex/system/util/object_table.h>  // VIGILANTE DE CUELGUES - que espera cada hilo
+#include <rex/system/xobject.h>            // VIGILANTE DE CUELGUES - que espera cada hilo
+#include <rex/system/xthread.h>            // VIGILANTE DE CUELGUES
 
 #include <algorithm>
 #include <atomic>
@@ -296,6 +298,50 @@ class NfsmwApp : public rex::ReXApp {
     }
   }
 
+  // Que hay detras del r3 de un hilo parado. En las funciones de espera del
+  // kernel r3 es o un handle -NtWaitForSingleObjectEx- o el puntero al objeto
+  // del guest -KeWaitForSingleObject-, asi que se prueban los dos. Saber si un
+  // hilo espera un evento, un semaforo o un mutex es lo que distingue "el
+  // juego espera al disco" de "nadie va a despertar a nadie".
+  static std::string DescribirEspera(uint32_t valor) {
+    auto* kernel = rex::system::kernel_state();
+    if (!kernel || !valor) {
+      return {};
+    }
+    auto nombre_tipo = [](rex::system::XObject::Type t) {
+      using Tipo = rex::system::XObject::Type;
+      switch (t) {
+        case Tipo::Event: return "evento";
+        case Tipo::Semaphore: return "semaforo";
+        case Tipo::Mutant: return "mutex";
+        case Tipo::Timer: return "temporizador";
+        case Tipo::Thread: return "hilo";
+        case Tipo::File: return "fichero";
+        case Tipo::IOCompletion: return "io";
+        case Tipo::NotifyListener: return "notificacion";
+        default: return "objeto";
+      }
+    };
+    auto describir = [&](const rex::system::XObject& o, const char* como) {
+      return fmt::format(" espera {} {}{}{} ({})", nombre_tipo(o.type()),
+                         o.name().empty() ? "" : "'", o.name(), o.name().empty() ? "" : "'", como);
+    };
+    if (auto objeto = kernel->object_table()->LookupObject<rex::system::XObject>(valor)) {
+      return describir(*objeto, "handle");
+    }
+    // Por puntero del guest: no hay indice inverso, pero esto se recorre solo
+    // cuando algo ya esta parado.
+    using Tipo = rex::system::XObject::Type;
+    for (Tipo tipo : {Tipo::Event, Tipo::Semaphore, Tipo::Mutant, Tipo::Timer, Tipo::Thread}) {
+      for (auto& objeto : kernel->object_table()->GetObjectsByType<rex::system::XObject>(tipo)) {
+        if (objeto->guest_object() == valor) {
+          return describir(*objeto, "puntero");
+        }
+      }
+    }
+    return {};
+  }
+
   // Volcado de la tabla de hilos. 'grave' decide si sale como error -cuando
   // es una alarma de verdad- o como debug -las instantaneas de rutina-.
   template <typename Lista>
@@ -308,10 +354,10 @@ class NfsmwApp : public rex::ReXApp {
         if (grave) {
           REXLOG_ERROR("[vigilante]   hilo id=0x{:X} entrada=0x{:08X} principal={} corriendo={} | "
                        "lr=0x{:08X} r1=0x{:08X} r13=0x{:08X} r3=0x{:08X} ctr=0x{:08X} "
-                       "ultimo_indirecto=0x{:08X}",
+                       "ultimo_indirecto=0x{:08X}{}",
                        h->thread_id(), cp->start_address, h->main_thread(), h->is_running(),
                        static_cast<uint32_t>(c.lr), c.r1.u32, c.r13.u32, c.r3.u32, c.ctr.u32,
-                       c.last_indirect_target);
+                       c.last_indirect_target, DescribirEspera(c.r3.u32));
         } else {
           REXLOG_DEBUG("[vigilante]   hilo id=0x{:X} entrada=0x{:08X} principal={} corriendo={} | "
                        "lr=0x{:08X} r1=0x{:08X} r13=0x{:08X} r3=0x{:08X} ctr=0x{:08X} "

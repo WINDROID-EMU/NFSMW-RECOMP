@@ -34,6 +34,7 @@ at 854×480.
 | Internal resolution scaling | Working, up to 4× |
 | Save games | Working |
 | Multiplayer | **Not working.** The privilege gate is solved; the network layer underneath is not. See [docs/diario/red-y-privilegios.md](docs/diario/red-y-privilegios.md) |
+| Android (Snapdragon, Turnip) | **In progress.** Boots from the ISO, reaches the menus and races with a Bluetooth controller, with sound. Main menu (3D) at ~50 fps on a Snapdragon 8 Elite with the Qualcomm driver; Turnip loads but is far slower. See [docs/android.md](docs/android.md) |
 
 ## What you need
 
@@ -82,6 +83,7 @@ source comments.
 | [docs/parches.md](docs/parches.md) | Every patch: what it changes, why, and how it was verified |
 | [docs/lanzador.md](docs/lanzador.md) | The launcher, its settings and how it is built |
 | [docs/rendimiento.md](docs/rendimiento.md) | Measured findings: EDRAM paths, resolution scaling, frame pacing |
+| [docs/android.md](docs/android.md) | The Android port: building the APK, Turnip, and why each piece is the way it is |
 | [docs/problemas-conocidos.md](docs/problemas-conocidos.md) | What is broken and how far each one was traced |
 | [docs/diario/](docs/diario/) | Long-form write-ups of the harder diagnoses |
 

@@ -95,6 +95,7 @@ fijo.
 """
 
 import argparse
+import os
 import pathlib
 import sys
 
@@ -181,7 +182,12 @@ VIEJOS = []
 
 def localizar_sdk():
     raiz = pathlib.Path(__file__).resolve().parent.parent
-    for cand in [raiz.parent / "rexglue-sdk", raiz / "sdk"]:
+    # NFSMW_SDK apunta a otro arbol del SDK (el de Android, por ejemplo). Si
+    # esta puesta se usa SOLO esa ruta: caer en silencio en el SDK de Windows
+    # parchearia el arbol equivocado.
+    otro = os.environ.get("NFSMW_SDK")
+    candidatos = [pathlib.Path(otro)] if otro else [raiz.parent / "rexglue-sdk", raiz / "sdk"]
+    for cand in candidatos:
         if (cand / "src" / "kernel" / "xam" / "xam_user.cpp").exists():
             return cand
     sys.exit("[ERROR] No encuentro src/kernel/xam/xam_user.cpp del SDK.\n"

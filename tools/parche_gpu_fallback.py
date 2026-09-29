@@ -65,6 +65,7 @@ la primera se quedo sin candidatos.
 """
 
 import argparse
+import os
 import pathlib
 import shutil
 import sys
@@ -218,7 +219,12 @@ NUEVO = """  // ============ PARCHE LOCAL - fallback de GPU y error visible ====
 
 def localizar_sdk():
     raiz = pathlib.Path(__file__).resolve().parent.parent
-    for cand in [raiz.parent / "rexglue-sdk", raiz / "sdk"]:
+    # NFSMW_SDK apunta a otro arbol del SDK (el de Android, por ejemplo). Si
+    # esta puesta se usa SOLO esa ruta: caer en silencio en el SDK de Windows
+    # parchearia el arbol equivocado.
+    otro = os.environ.get("NFSMW_SDK")
+    candidatos = [pathlib.Path(otro)] if otro else [raiz.parent / "rexglue-sdk", raiz / "sdk"]
+    for cand in candidatos:
         f = cand / "src" / "ui" / "d3d12" / "d3d12_provider.cpp"
         if f.exists():
             return f

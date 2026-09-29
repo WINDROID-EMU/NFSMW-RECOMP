@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="apk_con_juego">APK con el juego. Es solo para tus dispositivos: no lo compartas.</string>
+    <string name="apk_sonda">APK sin el juego: solo trae la sonda de Vulkan, para probar el móvil y el driver de la GPU.</string>
+
+    <!-- Juego -->
+    <string name="seccion_juego">Juego</string>
+    <string name="sin_iso">Sin ISO. Hace falta tu ISO de Xbox 360, versión PAL España.</string>
+    <string name="iso_elegida">ISO: %1$s</string>
+    <string name="elegir_iso">Elegir ISO…</string>
+    <string name="iso_sin_permiso">Android no ha dado permiso permanente para esa ISO. Elígela desde el almacenamiento del móvil.</string>
+    <string name="jugar">Jugar</string>
+    <string name="jugar_sin_iso">Elige tu ISO para jugar.</string>
+    <string name="jugar_sin_juego">Este APK no trae el juego.</string>
+
+    <!-- Pantalla -->
+    <string name="seccion_pantalla">Pantalla</string>
+    <string name="resolucion">Resolución</string>
+    <string name="resolucion_resumen">Tamaño de la imagen final en la pantalla. El juego se pinta igual.</string>
+    <string name="res_nativa">Nativa · %1$d×%2$d</string>
+    <string name="estirar">Estirar a pantalla completa</string>
+    <string name="estirar_resumen">Apagado: la imagen 16:9 de la Xbox 360, con barras negras. Encendido: llena la pantalla, pero deforma la imagen.</string>
+    <string name="mostrar_fps">Mostrar fps</string>
+    <string name="mostrar_fps_resumen">Contador en la esquina: fotogramas por segundo y milisegundos por fotograma.</string>
+
+    <!-- Gráficos -->
+    <string name="seccion_graficos">Gráficos</string>
+    <string name="suavizado">Suavizado de bordes</string>
+    <string name="suavizado_resumen">Quita los dientes de sierra. MSAA es el del juego: el más fino y el más caro. FXAA es un filtro sobre la imagen final: mucho más barato, pero algo más blando.</string>
+    <string name="aa_no">Apagado</string>
+    <string name="msaa_muestras">Muestras de MSAA</string>
+    <string name="msaa_muestras_resumen">4x es lo que usa el juego (46 fps frente a 60 en el menú). 2x suaviza menos y cuesta menos.</string>
+    <string name="fxaa_calidad">Calidad del FXAA</string>
+    <string name="fxaa_calidad_resumen">Alta suaviza más bordes, también los tenues, y ablanda un poco más la imagen.</string>
+    <string name="fxaa_normal">Normal</string>
+    <string name="fxaa_alta">Alta</string>
+    <string name="posprocesado">Posprocesado</string>
+    <string name="posprocesado_resumen">El filtro de color y el desenfoque del juego original. Apagado: menos trabajo para la GPU, pero pierde el aspecto original.</string>
+    <string name="anisotropico">Filtro anisótropo</string>
+    <string name="anisotropico_resumen">Texturas más nítidas vistas en ángulo, como la carretera a lo lejos.</string>
+    <string name="aniso_no">No</string>
+    <string name="escala">Resolución interna</string>
+    <string name="escala_resumen">2x pinta a 2560×1440: más nítido, pero mucho más pesado. Se recomienda 1x.</string>
+
+    <!-- Rendimiento -->
+    <string name="seccion_rendimiento">Rendimiento</string>
+    <string name="fijar_hilos">Fijar hilos a núcleos</string>
+    <string name="fijar_hilos_resumen">Pone los hilos más pesados del juego en los núcleos más rápidos.</string>
+    <string name="driver">Driver de GPU</string>
+    <string name="ayuda_driver">Turnip es el driver libre de Mesa para Adreno. Importa el .zip de un driver Turnip (con meta.json) y elígelo aquí.</string>
+    <string name="driver_sistema">Driver del sistema (Qualcomm)</string>
+    <string name="importar_driver">Importar driver (.zip)</string>
+    <string name="borrar_driver">Borrar el elegido</string>
+    <string name="driver_importado">Driver importado: %1$s</string>
+    <string name="driver_error">No se pudo importar el driver: %1$s</string>
+    <string name="error_driver_carpeta">no se pudo crear %1$s</string>
+    <string name="error_driver_meta">meta.json no es JSON válido</string>
+    <string name="error_driver_sin_so">el zip no trae ninguna .so de driver</string>
+    <string name="error_driver_mover">no se pudo mover el driver a %1$s</string>
+    <string name="turbo">Turbo de GPU</string>
+    <string name="turbo_resumen">Fija el reloj de la GPU en vez de dejar que el sistema lo ajuste. Solo con un driver propio (Turnip). No siempre ayuda: compruébalo con el contador de fps.</string>
+
+    <!-- Idioma -->
+    <string name="seccion_idioma">Idioma</string>
+    <string name="idioma_auto">Automático (idioma del teléfono)</string>
+
+    <!-- Avanzado -->
+    <string name="seccion_avanzado">Avanzado</string>
+    <string name="avanzado_resumen">Para probar qué cuesta cada cosa en tu móvil. Los valores por defecto son los recomendados.</string>
+    <string name="una_pasada">Escena en una pasada</string>
+    <string name="una_pasada_resumen">Pinta la escena una vez en vez de en tres franjas: ~30 % menos dibujos y unos +25-45 % de fps en carrera. Quita el MSAA del juego, así que se apaga si eliges MSAA.</string>
+    <string name="edram_fsi">EDRAM en el shader de píxel (experimental)</string>
+    <string name="edram_fsi_resumen">Otro camino para emular la EDRAM de la Xbox 360. Si la GPU no lo soporta, se ignora.</string>
+    <string name="oclusion">Consultas de oclusión</string>
+    <string name="oclusion_resumen">Destellos del sol y luces. Obliga al juego a esperar a la GPU.</string>
+    <string name="exposicion">Exposición fiel</string>
+    <string name="exposicion_resumen">Lee la imagen de la GPU en cada fotograma. Sin ello sale lavada.</string>
+    <string name="memexport">Lectura de memexport</string>
+    <string name="memexport_resumen">Coherencia de memoria de lo que escriben los shaders. Puede costar rendimiento.</string>
+    <string name="paginas">Refrescar páginas escritas por la GPU</string>
+    <string name="paginas_resumen">Coherencia de memoria. Puede costar rendimiento.</string>
+    <string name="registro_detallado">Registro detallado</string>
+    <string name="registro_detallado_resumen">log_level=debug. Hunde los fps: solo para diagnosticar problemas.</string>
+    <string name="probar_vulkan">Probar Vulkan</string>
+    <string name="probar_vulkan_resumen">Carga el driver de la GPU y comprueba qué soporta, sin el juego.</string>
+    <string name="sin_informe">Sin informe de la sonda todavía. Pulsa «Probar Vulkan».</string>
+
+    <!-- Mando táctil -->
+    <string name="tactil_ocultar">OCULTAR</string>
+    <string name="tactil_mostrar">TÁCTIL</string>
+    <string name="seccion_perfil">Perfil de Xbox 360</string>
+    <string name="gamertag_resumen">El nombre que el juego ve en tu perfil. Si lo cambias, tus partidas guardadas se conservan: van por el ID del perfil, no por el nombre.</string>
+    <string name="gamertag_error">Hasta 15 letras, números y espacios, empezando por una letra.</string>
+    <string name="seccion_tactil">Controles táctiles</string>
+    <string name="editar_tactil">Editar controles táctiles</string>
+    <string name="editar_tactil_resumen">Mueve los botones táctiles y cambia su tamaño y su opacidad.</string>
+    <string name="editor_tamano">TAMAÑO</string>
+    <string name="editor_opacidad">OPACIDAD</string>
+    <string name="editor_restaurar">RESTAURAR</string>
+    <string name="editor_cancelar">CANCELAR</string>
+    <string name="editor_listo">LISTO</string>
+    <string name="editor_ayuda">Arrastra un control para moverlo. TAMAÑO cambia el elegido, o todos si no hay ninguno.</string>
+</resources>

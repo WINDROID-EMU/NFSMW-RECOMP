@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Pantalla de inicio: el tema oscuro de Material 3 con el acento del mando
+         tactil (#6F7432). Sin barra de titulo. -->
+    <style name="Tema.Inicio" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#6F7432</item>
+        <item name="colorSecondary">#6F7432</item>
+    </style>
+</resources>

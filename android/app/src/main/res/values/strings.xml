@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Texts in English, the default language. Translations live in values-es
+    (Spanish) and values-pt (Portuguese); any string added here must be added
+    there too. The ones marked translatable="false" are the same in all three.
+-->
+<resources>
+    <string name="app_name" translatable="false">NFSMW Recompiled</string>
+
+    <string name="apk_con_juego">This APK contains the game. It is for your own devices only: do not share it.</string>
+    <string name="apk_sonda">APK without the game: it only includes the Vulkan probe, to test your phone and GPU driver.</string>
+
+    <!-- Game -->
+    <string name="seccion_juego">Game</string>
+    <string name="sin_iso">No ISO selected. You need your own Xbox 360 ISO, PAL Spain version.</string>
+    <string name="iso_elegida">ISO: %1$s</string>
+    <string name="elegir_iso">Choose ISO…</string>
+    <string name="iso_sin_permiso">Android did not grant permanent access to that ISO. Pick it from the phone\'s storage.</string>
+    <string name="jugar">Play</string>
+    <string name="jugar_sin_iso">Choose your ISO to play.</string>
+    <string name="jugar_sin_juego">This APK does not include the game.</string>
+
+    <!-- Display -->
+    <string name="seccion_pantalla">Display</string>
+    <string name="resolucion">Resolution</string>
+    <string name="resolucion_resumen">Size of the final image on screen. The game itself is rendered the same way.</string>
+    <string name="res_480p" translatable="false">480p · 720×480</string>
+    <string name="res_720p" translatable="false">720p · 1280×720</string>
+    <string name="res_nativa">Native · %1$d×%2$d</string>
+    <string name="estirar">Stretch to full screen</string>
+    <string name="estirar_resumen">Off: the Xbox 360\'s 16:9 image, with black bars. On: fills the screen, but distorts the image.</string>
+    <string name="mostrar_fps">Show FPS</string>
+    <string name="mostrar_fps_resumen">Corner counter: frames per second and milliseconds per frame.</string>
+
+    <!-- Graphics -->
+    <string name="seccion_graficos">Graphics</string>
+    <string name="suavizado">Anti-aliasing</string>
+    <string name="suavizado_resumen">Smooths jagged edges. MSAA is the game\'s own: the finest and the most expensive. FXAA is a filter over the final image: much cheaper, but a little softer.</string>
+    <string name="aa_msaa" translatable="false">MSAA</string>
+    <string name="aa_fxaa" translatable="false">FXAA</string>
+    <string name="aa_no">Off</string>
+    <string name="msaa_muestras">MSAA samples</string>
+    <string name="msaa_muestras_resumen">4x is what the game uses (46 fps vs 60 in the menu). 2x smooths less and costs less.</string>
+    <string name="fxaa_calidad">FXAA quality</string>
+    <string name="fxaa_calidad_resumen">High smooths more edges, faint ones too, and softens the image a little more.</string>
+    <string name="fxaa_normal">Normal</string>
+    <string name="fxaa_alta">High</string>
+    <string name="posprocesado">Post-processing</string>
+    <string name="posprocesado_resumen">The original game\'s color filter and blur. Off: less GPU work, but it no longer looks like the original.</string>
+    <string name="anisotropico">Anisotropic filtering</string>
+    <string name="anisotropico_resumen">Sharper textures seen at an angle, like the road in the distance.</string>
+    <string name="aniso_no">Off</string>
+    <string name="aniso_2" translatable="false">2x</string>
+    <string name="aniso_4" translatable="false">4x</string>
+    <string name="aniso_16" translatable="false">16x</string>
+    <string name="escala">Internal resolution</string>
+    <string name="escala_resumen">2x renders at 2560×1440: sharper, but much heavier. 1x is recommended.</string>
+    <string name="escala_valor" translatable="false">%1$dx</string>
+
+    <!-- Performance -->
+    <string name="seccion_rendimiento">Performance</string>
+    <string name="fijar_hilos">Pin threads to cores</string>
+    <string name="fijar_hilos_resumen">Puts the game\'s heaviest threads on the fastest cores.</string>
+    <string name="driver">GPU driver</string>
+    <string name="ayuda_driver">Turnip is Mesa\'s open-source driver for Adreno. Import a Turnip driver .zip (with meta.json) and select it here.</string>
+    <string name="driver_sistema">System driver (Qualcomm)</string>
+    <string name="importar_driver">Import driver (.zip)</string>
+    <string name="borrar_driver">Delete selected</string>
+    <string name="driver_importado">Driver imported: %1$s</string>
+    <string name="driver_error">Could not import the driver: %1$s</string>
+    <string name="error_driver_carpeta">could not create %1$s</string>
+    <string name="error_driver_meta">meta.json is not valid JSON</string>
+    <string name="error_driver_sin_so">the zip contains no driver .so</string>
+    <string name="error_driver_mover">could not move the driver to %1$s</string>
+    <string name="turbo">GPU turbo</string>
+    <string name="turbo_resumen">Locks the GPU clock instead of letting the system adjust it. Only with a custom driver (Turnip). It does not always help: check with the FPS counter.</string>
+
+    <!-- Language -->
+    <string name="seccion_idioma">Language</string>
+    <string name="idioma_auto">Automatic (phone language)</string>
+    <string name="idioma_en" translatable="false">English</string>
+    <string name="idioma_es" translatable="false">Español</string>
+    <string name="idioma_pt" translatable="false">Português</string>
+
+    <!-- Advanced -->
+    <string name="seccion_avanzado">Advanced</string>
+    <string name="avanzado_resumen">To test what each thing costs on your phone. The defaults are the recommended ones.</string>
+    <string name="una_pasada">Single-pass scene</string>
+    <string name="una_pasada_resumen">Draws the scene once instead of in three strips: ~30 % fewer draws and about +25-45 % fps in races. It disables the game\'s MSAA, so it turns off with MSAA selected.</string>
+    <string name="edram_fsi">EDRAM in the pixel shader (experimental)</string>
+    <string name="edram_fsi_resumen">Another way to emulate the Xbox 360\'s EDRAM. Ignored if the GPU does not support it.</string>
+    <string name="oclusion">Occlusion queries</string>
+    <string name="oclusion_resumen">Sun flares and lights. Makes the game wait for the GPU.</string>
+    <string name="exposicion">Accurate exposure</string>
+    <string name="exposicion_resumen">Reads the image back from the GPU every frame. Without it the image looks washed out.</string>
+    <string name="memexport">Memexport readback</string>
+    <string name="memexport_resumen">Memory coherence for what the shaders write. May cost performance.</string>
+    <string name="paginas">Refresh GPU-written pages</string>
+    <string name="paginas_resumen">Memory coherence. May cost performance.</string>
+    <string name="registro_detallado">Detailed log</string>
+    <string name="registro_detallado_resumen">log_level=debug. It tanks the fps: only for diagnosing problems.</string>
+    <string name="probar_vulkan">Test Vulkan</string>
+    <string name="probar_vulkan_resumen">Loads the GPU driver and checks what it supports, without the game.</string>
+    <string name="sin_informe">No probe report yet. Tap “Test Vulkan”.</string>
+
+    <!-- Touch controller -->
+    <string name="tactil_ocultar">HIDE</string>
+    <string name="tactil_mostrar">TOUCH</string>
+    <string name="seccion_perfil">Xbox 360 profile</string>
+    <string name="gamertag" translatable="false">Gamertag</string>
+    <string name="gamertag_resumen">The name the game sees for your profile. Your saves are kept if you change it: they go by the profile ID, not by the name.</string>
+    <string name="gamertag_error">Up to 15 letters, numbers and spaces, starting with a letter.</string>
+    <string name="seccion_tactil">Touch controls</string>
+    <string name="editar_tactil">Edit touch controls</string>
+    <string name="editar_tactil_resumen">Move the touch buttons and change their size and opacity.</string>
+    <string name="editor_tamano">SIZE</string>
+    <string name="editor_opacidad">OPACITY</string>
+    <string name="editor_restaurar">RESET</string>
+    <string name="editor_cancelar">CANCEL</string>
+    <string name="editor_listo">DONE</string>
+    <string name="editor_ayuda">Drag a control to move it. SIZE changes the selected one, or all of them if none is selected.</string>
+</resources>
