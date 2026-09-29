@@ -37,6 +37,34 @@
 # contexto, para que el compilador los tenga en registros de verdad.
 cr_as_local = true
 
+# xer_as_local y ctr_as_local SE PROBARON Y SE REVIRTIERON (2026-09-17).
+#
+# Con las dos activas el juego se colgaba de forma determinista, siempre en
+# el mismo punto: justo al arrancar en bloque los hilos guest que cargan la
+# primera pista (L2RA_Sunset), con exit code -1073741681 (0xC0000135) y sin
+# ni un [error]/[fatal] antes en el log -exactamente el patron de un salto
+# indirecto (bctr) aterrizando en direccion basura, no el de una DLL que
+# falte-. Reproducido igual en dos maquinas distintas.
+#
+# SOSPECHA: ctr_as_local convierte CTR de campo del contexto por-hilo a
+# variable local de cada funcion generada. bctr/bctrl -saltos indirectos,
+# tablas de switch, vtables- LEEN ese CTR para decidir a donde saltar. Si
+# algun codigo generado espera que CTR sobreviva entre llamadas a otras
+# funciones recompiladas -o a traves de un limite setjmp/longjmp, que este
+# proyecto SI usa (ver setjmp/longjmp mas abajo)-, la version local se queda
+# desincronizada del valor real y el salto indirecto aterriza en cualquier
+# sitio. xer_as_local se revirtio a la vez por prudencia, no porque haya
+# evidencia propia contra el: no hubo tiempo de aislar cual de las dos era
+# la culpable por separado.
+#
+# NO reactivar sin, antes: (a) probarlas por separado -primero xer solo,
+# reconstruir, jugar una sesion larga; luego ctr solo- y (b) revisar si el
+# codegen de ReXGlue hace write-back de CTR al contexto antes de cada
+# llamada/salto entre funciones cuando ctr_as_local esta activo. Si no lo
+# hace, es un bug del codegen y no algo que se pueda arreglar desde aqui.
+# xer_as_local = true
+# ctr_as_local = true
+
 # --- fin RENDIMIENTO raiz ---
 
 [functions]

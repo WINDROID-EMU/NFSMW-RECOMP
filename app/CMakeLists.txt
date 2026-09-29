@@ -13,6 +13,7 @@ include(generated/rexglue.cmake)
 # Sources
 set(NFSMW_SOURCES
     src/main.cpp
+    src/nfsmw_menu.cpp
 )
 
 if(WIN32)

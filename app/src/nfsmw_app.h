@@ -4,13 +4,30 @@
 
 #pragma once
 
+// Windows primero y reducido a proposito: las cabeceras de rex no esperan que
+// windows.h haya dejado macros por medio.
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <shellapi.h>
+#endif
+
+#include "nfsmw_menu.h"
+
 #include <rex/cvar.h>
 #include <rex/filesystem.h>
 #include <rex/logging.h>
 #include <rex/rex_app.h>
 #include <rex/ui/overlay/debug_overlay.h>
+#include <rex/ui/keybinds.h>  // RegisterBind/UnregisterBind (tecla ESC del menu)
 #include <rex/system/kernel_state.h>       // VIGILANTE DE CUELGUES
 #include <rex/system/util/object_table.h>  // VIGILANTE DE CUELGUES - que espera cada hilo
+#include <rex/system/xmemory.h>            // TranslateVirtual (parche Black Edition)
 #include <rex/system/xobject.h>            // VIGILANTE DE CUELGUES - que espera cada hilo
 #include <rex/system/xthread.h>            // VIGILANTE DE CUELGUES
 
@@ -22,6 +39,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+// Cvar "Contenido > black_edition", definido en nfsmw_menu.cpp.
+REXCVAR_DECLARE(bool, black_edition);
 
 class NfsmwApp : public rex::ReXApp {
  public:
@@ -36,12 +56,10 @@ class NfsmwApp : public rex::ReXApp {
   // Ganchos disponibles y sin usar:
   //   void OnPreSetup(rex::RuntimeConfig& config) override {}
   //   void OnLoadXexImage(std::string& xex_image) override {}
-  //   void OnPostLoadXexImage() override {}
-  //   void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {}
-  //   void OnShutdown() override {}
   //
-  // Los tres de abajo SI estan usados: rutas portables, ajustes obligatorios
-  // y contador de fps.
+  // Los ganchos usados: rutas portables, ajustes obligatorios, contador de fps,
+  // el parche Black Edition (OnPostLoadXexImage) y el menu de ajustes con ESC
+  // (OnCreateDialogs).
 
  protected:
   // ==========================================================================
@@ -176,7 +194,50 @@ class NfsmwApp : public rex::ReXApp {
     ArrancarVigilante();
   }
 
-  void OnShutdown() override { PararVigilante(); }
+  // ==========================================================================
+  //  2b. PARCHE BLACK EDITION (NATIVO)
+  //
+  //  En la edicion PAL (454107D9) hay una bandera en 0x82A2CE04 que decide si
+  //  vender los coches de pago (edicion Black) como descargables o no. Xenia
+  //  la activaba con  data_write(be32, 0x82a2ce04, 0x00000100); aqui se pisa
+  //  directamente la memoria del guest.
+  //
+  //  La memoria gestionada por memoria::Memory se expone en big-endian: el
+  //  offset 0 es el byte mas significativo. Por eso basta escribir el valor
+  //  tal cual (0x00000100), sin endian-swap: es lo mismo que hacia la patch
+  //  .toml con el archivo del XEX parcheado.
+  //
+  //  Se puede apagar desde el menu (Contenido > Black Edition), pero solo se
+  //  aplica en la carga siguiente: esta funcion corre cada vez que se carga
+  //  el XEX, sea al arrancar o al releer la imagen.
+  // ==========================================================================
+  void OnPostLoadXexImage() override { AplicarParcheBlackEdition(); }
+
+  // ==========================================================================
+  //  2c. MENU DE AJUSTES CON ESC
+  //
+  //  Al igual que F3 (depuracion) y F4 (ajustes tecnicos), se registra una
+  //  tecla y el dialogo se crea y se destruye con ella (los dialogos de ImGui
+  //  del SDK se registran solos en el drawer al construirse y se borran solos
+  //  al cerrarse; solo hay que guardar el puntero y anularlo con on_closed).
+  //
+  //  La tecla quedo asignada a Escape. Se puede volver a ligar desde F4
+  //  (Seccion "Keybinds").
+  // ==========================================================================
+  void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
+    rex::ui::RegisterBind("bind_nfsmw_menu", "Escape",
+                          "Abrir/cerrar menu de ajustes del juego",
+                          [this] { AlternarMenu(); });
+  }
+
+  void OnShutdown() override {
+    PararVigilante();
+    rex::ui::UnregisterBind("bind_nfsmw_menu");
+    if (menu_ != nullptr) {
+      menu_->RequestClose();
+      menu_ = nullptr;
+    }
+  }
 
  private:
   static void PonerSiNadieLoPidio(const char* nombre, const char* valor) {
@@ -474,6 +535,89 @@ class NfsmwApp : public rex::ReXApp {
     }
   }
 
+  // ==========================================================================
+  //  5. PARCHE BLACK EDITION + EL MENU DE AJUSTES (ESC)
+  // ==========================================================================
+
+  void AplicarParcheBlackEdition() {
+    constexpr uint32_t kBlackEditionAddr = 0x82A2CE04u;  // edicion PAL (454107D9)
+    auto* kernel = rex::system::kernel_state();
+    if (kernel == nullptr || kernel->memory() == nullptr) {
+      REXLOG_WARN("[black-edition] sin kernel de memoria; no se puede parchear.");
+      return;
+    }
+    if (!REXCVAR_GET(black_edition)) {
+      REXLOG_INFO("[black-edition] desactivado (black_edition=false).");
+      return;
+    }
+    auto* bandera = kernel->memory()->TranslateVirtual<uint32_t*>(kBlackEditionAddr);
+    if (bandera == nullptr) {
+      REXLOG_WARN("[black-edition] no se pudo traducir 0x{:08X}; el contenido "
+                  "Black Edition seguira oculto.", kBlackEditionAddr);
+      return;
+    }
+    // La memoria del guest se expone en big-endian: el valor se escribe tal cual.
+    *bandera = 0x00000100u;
+    REXLOG_INFO("[black-edition] bandera 0x{:08X} = 0x{:08X} (contenido desbloqueado).",
+                kBlackEditionAddr, *bandera);
+  }
+
+  void AlternarMenu() {
+    if (menu_ == nullptr) {
+      auto* drawer = imgui_drawer();
+      if (drawer == nullptr) {
+        return;  // pulsacion prematura: todavia no hay UI
+      }
+      menu_ = new NfsmwMenuDialog(drawer, NfsmwMenuDialog::Callbacks{
+          [this] { GuardarConfigDetras(); },
+          [this] { RelanzarJuego(); },
+          [this] {
+            if (window() != nullptr) {
+              window()->RequestClose();
+            }
+          },
+          [this] { menu_ = nullptr; },
+          [this] { return MuestreaFotograma(); },
+      });
+    } else {
+      menu_->RequestClose();  // el dialogo se cierra y se borra solo
+    }
+  }
+
+  void GuardarConfigDetras() {
+    auto carpeta = rex::filesystem::GetExecutableFolder();
+    if (carpeta.empty()) {
+      carpeta = std::filesystem::current_path();
+    }
+    rex::cvar::SaveConfig(carpeta / "nfsmw.toml");
+  }
+
+  void RelanzarJuego() {
+    GuardarConfigDetras();
+#if defined(_WIN32)
+    const auto exe = rex::filesystem::GetExecutablePath();
+    if (!exe.empty()) {
+      const std::wstring ruta = exe.wstring();
+      const std::wstring carpeta = exe.parent_path().wstring();
+      const INT_PTR resultado = reinterpret_cast<INT_PTR>(ShellExecuteW(
+          nullptr, L"open", ruta.c_str(), nullptr, carpeta.c_str(), SW_SHOWNORMAL));
+      if (resultado > 32) {
+        // El proceso nuevo arranca con el toml recien guardado; este se cierra.
+        if (window() != nullptr) {
+          window()->RequestClose();
+        }
+        return;
+      }
+      REXLOG_ERROR("[menu] no se pudo relanzar el juego (ShellExecuteW = {}); sigue con "
+                   "lo aplicado y reinicia a mano.", int32_t(resultado));
+    } else {
+      REXLOG_ERROR("[menu] sin ruta del ejecutable; reinicia el juego a mano.");
+    }
+#else
+    REXLOG_WARN("[menu] reinicia el juego a mano para aplicar los cambios.");
+#endif
+  }
+
   rex::ui::FrameStats stats_{};
   std::chrono::steady_clock::time_point ultimo_{};
   double suave_ms_ = 0.0;
@@ -482,4 +626,6 @@ class NfsmwApp : public rex::ReXApp {
 
   std::thread vigilante_;
   std::atomic<bool> vigilante_activo_{false};
+
+  NfsmwMenuDialog* menu_ = nullptr;  // los dialogos ImGui se borran solos al cerrarse
 };

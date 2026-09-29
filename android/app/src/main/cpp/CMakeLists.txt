@@ -126,6 +126,9 @@ if(NFSMW_CON_JUEGO)
         render_targets.cpp
         afinidad.cpp
         audio/aaudio_driver.cpp
+        # El menu de ajustes del juego (tecla ESC en escritorio): lo usa
+        # app/src/nfsmw_app.h, que se comparte con la version de PC.
+        "${NFSMW_REPO}/app/src/nfsmw_menu.cpp"
         "${NFSMW_SDK}/src/ui/rex_app.cpp")
     target_include_directories(main PRIVATE
         "${NFSMW_REPO}/app/src"

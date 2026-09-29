@@ -51,3 +51,32 @@
 #  SI ALGUNA VEZ SE VE MAL -fantasmas, cosas que no se borran, restos del
 #  fotograma anterior- se prueba "rov" y se compara.
 render_target_path_d3d12 = "rtv"
+
+
+# ----------------------------------------------------------------------------
+#  Resolucion (equivalente a GoldenEye-Recomp, mismo SDK ReXGlue)
+# ----------------------------------------------------------------------------
+#
+#  - video_mode_*: fija el MODO DE VIDEO GUEST (lo que el juego presenta), NO
+#    la ventana. El default del recomp era 854x480 (PAL EDTV) y el motor avisa
+#    "swap source is unscaled (854x480)" -> por eso se veia borroso aunque la
+#    escala fuera alta: el frame se estiraba desde 854x480.
+#  - resolution_scale: supersampling del motor, igual que en GoldenEye:
+#    renders/interiores a N veces en ambos ejes y se baja al tamano de ventana.
+#    Solo sirven enteros (1/2/3/4). Se aplica AL ARRANQUE: hay que reiniciar
+#    el juego para que cambie.
+#    Con video_mode 1080p:
+#      2  = 3840x2160 interno  (4x pixeles)      <- recomendado
+#      3  = 5760x3240 interno  (9x pixeles)
+#      4  = 7680x4320 interno  (16x pixeles)
+#  - anisotropic_override: 0=off, 3=4x, 4=8x, 5=16x (se aplica sin reiniciar).
+#  - swap_post_effect: "none" | "fxaa" | "fxaa_extreme" (AA post del motor).
+#  - user_profile_name: gamertag del perfil Xbox Live simulado (editable desde
+#    el menu de ESC, pestana OTROS).
+#
+#  Los argumentos del lanzador mandan sobre esto: para probar este archivo se
+#  lanza nfsmw.exe directo (o un .bat) sin pasarle --resolution/--escala.
+video_mode_width  = 1920
+video_mode_height = 1080
+resolution_scale  = 2
+anisotropic_override = 5

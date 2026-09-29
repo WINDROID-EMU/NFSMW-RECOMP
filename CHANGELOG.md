@@ -2,7 +2,41 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
-## [Sin publicar]
+## [0.0.2] - 2026-09-17
+
+### Añadido
+
+- El lanzador acepta un `.iso` directamente: lo extrae solo la primera vez a
+  `game_root_cache\` dentro de la carpeta portable y reutiliza esa copia después. Antes
+  solo servía apuntar a una carpeta ya extraída (`--game_data_root` exige un directorio,
+  el SDK no sabe montar `.iso`).
+- Ventana del lanzador redimensionable y con scroll: la banda de portada se estrecha en
+  pantallas pequeñas en vez de forzar scroll horizontal, y los ajustes se centran en
+  pantallas anchas en vez de quedarse pegados a un lado con un hueco enorme.
+- Ajustes del lanzador en dos columnas en vez de una lista larga.
+- Tema oscuro para el lanzador.
+
+### Cambiado
+
+- El lanzador arranca por defecto a 1080p + escala x2 en vez de 720p + x1 en una
+  instalación nueva (sin `lanzador.json` todavía) — coincide con lo que `nfsmw.toml` ya
+  trae configurado de fábrica, en vez de arrancar más bajo que eso sin que nadie lo pida.
+- La portada del lanzador cubre el panel entero ("cover", no "fit"): antes dejaba un
+  tramo negro vacío debajo en proporciones de ventana altas.
+- El juego se lanza con prioridad de proceso más alta.
+
+### Arreglado
+
+- Ventana del lanzador marcada DPI-aware: en monitores con escala de Windows (125%,
+  150%...) salía borrosa por el bitmap-stretch de Windows; ahora nítida.
+- "Banner duplicado" al agrandar la ventana del lanzador: faltaba
+  `ControlStyles.ResizeRedraw` en el panel de la portada, así que al crecer el control
+  solo se invalidaba la franja nueva expuesta y quedaba el recorte antiguo debajo.
+- `nfsmw.toml` de la carpeta portable había perdido la sección de resolución
+  (`video_mode_width`/`video_mode_height`/`resolution_scale`) al restaurar una copia de
+  seguridad anterior; repuesta para que coincida con `app/nfsmw.toml` del repositorio.
+
+## [0.0.1] - 2026-09-10
 
 Primera versión ordenada del proyecto. Todo lo de abajo se hizo antes de que existiera
 este repositorio; queda registrado aquí porque es el estado del que parte.

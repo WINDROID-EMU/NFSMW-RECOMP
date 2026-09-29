@@ -15,6 +15,18 @@ calls, the filesystem, audio, input, and a translation of the Xenos GPU to Direc
 `default.xex`, no generated C++, and no compiled binary — and it never will. See
 [Legal](#legal).
 
+## This fork
+
+This is a fork of [madelrandel-blip/NFSMW-Recompiled](https://github.com/madelrandel-blip/NFSMW-Recompiled)
+that adds an **Android port** (arm64, Snapdragon, Vulkan) and performance work on the Xenos
+GPU path. See [docs/android.md](docs/android.md), [docs/pipeline-nativo.md](docs/pipeline-nativo.md)
+and the [CHANGELOG](CHANGELOG.md).
+
+> **This is a vibe-coded project.** The Android port and the changes in this fork were
+> written with an AI coding assistant (Claude Code), directed, tested on real hardware and
+> accepted by a human. The documentation records what was measured and what was not; trust
+> the numbers in it, not the confidence of any comment. Review the code before reusing it.
+
 ---
 
 ## Status
@@ -157,6 +169,43 @@ not affiliated with, endorsed by, or connected to Electronic Arts in any way.
 
 ## Credits
 
+Thanks to everyone whose work this stands on.
+
+**The original project**
+
+- [madelrandel-blip/NFSMW-Recompiled](https://github.com/madelrandel-blip/NFSMW-Recompiled) —
+  the recompilation this fork is based on, by its authors and contributors, including the
+  Linux ARM64 launcher and AppImage by MaSieS4Fun
+
+**What it is built on**
+
 - [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk) — the runtime this is built on
 - [XenonRecomp](https://github.com/hedge-dev/XenonRecomp) — the static recompilation approach
 - [Xenia](https://xenia.jp/) — the kernel and GPU emulation ReXGlue descends from
+- The libraries the SDK bundles, each under its own license: FFmpeg (XMA audio), SDL3,
+  glslang and SPIRV-Tools, Dear ImGui, spdlog, fmt, xxHash, Vulkan Memory Allocator and
+  toml++, among others
+
+**The Android port**
+
+- [hells-gate-recomp-android](https://github.com/deivid22srk/hells-gate-recomp-android) by
+  deivid22srk — the Android patch for the ReXGlue SDK (bionic, ASharedMemory, 16 KB pages,
+  ANativeWindow, ARM64 memory barriers). It declares no license, so it is **not** included
+  here: `tools/android/preparar_sdk.py` downloads it from that repository at build time
+- [libadrenotools](https://github.com/bylaws/libadrenotools) by Billy Laws — loading custom
+  Turnip drivers on Adreno GPUs
+- [Mesa / Turnip](https://docs.mesa3d.org/drivers/freedreno.html) — the open-source Adreno
+  Vulkan driver the app can load
+- [StevensND/nfsmw-nx](https://github.com/StevensND/nfsmw-nx) — the Nintendo Switch port of this
+  same project. The single-pass scene (`android/app/src/main/cpp/render_targets.cpp`) is ported
+  from it, and its documentation on the game's renderer was a guide
+- [Xenia Canary](https://github.com/xenia-canary/xenia-canary) and
+  [Xenia Edge](https://github.com/has207/xenia-edge) — XMA decoder and ring buffer fixes ported
+  in `tools/parche_xma_paquetes.py`, `tools/parche_xma_edge.py` and
+  `tools/parche_anillo_bloques.py`
+- [XenDroid](https://github.com/rfandango/XenDroid) — the reference for audio on Android
+- The Skate 3 Android ports ([andrewnakas/skate3-android](https://github.com/andrewnakas/skate3-android),
+  [Buku313/Skate3-Mobile](https://github.com/Buku313/Skate3-Mobile)) — the touch controller
+  started from one of them
+- [Material Components for Android](https://github.com/material-components/material-components-android)
+  — the launcher's interface
