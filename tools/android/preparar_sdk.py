@@ -98,7 +98,9 @@ PARCHES_PROYECTO = [
     "parche_espera_anillo", "parche_cola_presentar", "parche_subidas", "parche_cvars",
     "parche_fences", "parche_area", "parche_vblank",
     "parche_msaa", "parche_xma_paquetes", "parche_xma_edge", "parche_anillo_bloques",
-    # La app pasa --nfsmw_una_pasada: sin este parche el cvar no existiria.
+    # parche_una_pasada ya no lo usa la app (la escena en una pasada la hace
+    # android/app/src/main/cpp/render_targets.cpp), pero se deja: el cvar
+    # nfsmw_una_pasada sigue existiendo para compararlo.
     "parche_una_pasada", "parche_camino_edram",
     # Y --user_gamertag, desde la pantalla de inicio.
     "parche_gamertag",

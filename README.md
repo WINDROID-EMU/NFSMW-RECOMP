@@ -20,7 +20,8 @@ calls, the filesystem, audio, input, and a translation of the Xenos GPU to Direc
 This is a fork of [madelrandel-blip/NFSMW-Recompiled](https://github.com/madelrandel-blip/NFSMW-Recompiled)
 that adds an **Android port** (arm64, Snapdragon, Vulkan) and performance work on the Xenos
 GPU path. See [docs/android.md](docs/android.md), [docs/pipeline-nativo.md](docs/pipeline-nativo.md)
-and the [CHANGELOG](CHANGELOG.md).
+and the [CHANGELOG](CHANGELOG.md). Everything it changes in the ReXGlue SDK is in
+[sdk/](sdk/): one diff to read, generated from the patch scripts in `tools/`.
 
 > **This is a vibe-coded project.** The Android port and the changes in this fork were
 > written with an AI coding assistant (Claude Code), directed, tested on real hardware and
@@ -204,8 +205,7 @@ Thanks to everyone whose work this stands on.
   in `tools/parche_xma_paquetes.py`, `tools/parche_xma_edge.py` and
   `tools/parche_anillo_bloques.py`
 - [XenDroid](https://github.com/rfandango/XenDroid) — the reference for audio on Android
-- The Skate 3 Android ports ([andrewnakas/skate3-android](https://github.com/andrewnakas/skate3-android),
-  [Buku313/Skate3-Mobile](https://github.com/Buku313/Skate3-Mobile)) — the touch controller
-  started from one of them
+- [Buku313/Skate3-Mobile](https://github.com/Buku313/Skate3-Mobile) — the Skate 3 Android port
+  the touch controller started from
 - [Material Components for Android](https://github.com/material-components/material-components-android)
   — the launcher's interface
