@@ -120,6 +120,9 @@ EVENTO_NUEVO = '''  switch (event.type) {
     case SDL_EVENT_WILL_ENTER_BACKGROUND:
     case SDL_EVENT_DID_ENTER_FOREGROUND: {
       const bool disponible = event.type == SDL_EVENT_DID_ENTER_FOREGROUND;
+#if REX_PLATFORM_ANDROID
+      if (disponible) break;
+#endif
       for (const auto& [id, window] : windows_) {
         if (window) {
           window->HandleSurfaceAvailability(disponible);
@@ -131,9 +134,50 @@ EVENTO_NUEVO = '''  switch (event.type) {
 '''
 
 
+# ---------------------------------------------------------------------------
+#  src/ui/window_sdl.cpp: recuperar la superficie al volver (Android)
+#
+#  En Android DID_ENTER_FOREGROUND llega en onResume, ANTES de que la actividad
+#  tenga otra vez superficie: pedirla ahi la deja sin crear y la pantalla se
+#  queda en negro. Llega despues, con el foco de la ventana o al restaurarse,
+#  y es ahi donde se recupera. Por eso el bloque de eventos de arriba no hace
+#  nada al volver en Android.
+# ---------------------------------------------------------------------------
+
+FOCO_ANCLA = '''    case SDL_EVENT_WINDOW_FOCUS_GAINED:
+      OnFocusUpdate(true, destruction_receiver);
+      break;
+'''
+
+FOCO_NUEVO = '''    case SDL_EVENT_WINDOW_FOCUS_GAINED:
+      OnFocusUpdate(true, destruction_receiver);
+#if REX_PLATFORM_ANDROID
+      if (!HasSurface()) {
+        HandleSurfaceAvailability(true);
+      }
+#endif
+      break;
+'''
+
+RESTAURAR_ANCLA = '''    case SDL_EVENT_WINDOW_RESTORED:
+      OnRestored(destruction_receiver);
+      break;
+'''
+
+RESTAURAR_NUEVO = '''    case SDL_EVENT_WINDOW_RESTORED:
+      OnRestored(destruction_receiver);
+#if REX_PLATFORM_ANDROID
+      HandleSurfaceAvailability(true);
+#endif
+      break;
+'''
+
+
 BLOQUES = [
     ("include/rex/ui/window_sdl.h", "declarar HandleSurfaceAvailability", DECL_ANCLA, DECL_NUEVO),
     ("src/ui/window_sdl.cpp", "soltar y recuperar la superficie", IMPL_ANCLA, IMPL_NUEVO),
+    ("src/ui/window_sdl.cpp", "recuperarla con el foco (Android)", FOCO_ANCLA, FOCO_NUEVO),
+    ("src/ui/window_sdl.cpp", "recuperarla al restaurar (Android)", RESTAURAR_ANCLA, RESTAURAR_NUEVO),
     ("src/ui/windowed_app_context_sdl.cpp", "eventos de segundo plano", EVENTO_ANCLA,
      EVENTO_NUEVO),
 ]

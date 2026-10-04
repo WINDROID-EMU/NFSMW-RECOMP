@@ -18,7 +18,8 @@
 //
 //   ""        no tocar nada (por defecto)
 //   "auto"    los nucleos de mas capacidad (/sys/.../cpu_capacity) son los
-//             prime: "GPU Commands" y "Main XThread" van ahi, y TODO lo demas a
+//             prime: "GPU Commands" (o "GPU anillo nativo" con el motor
+//             nativo) y "Main XThread" van ahi, y TODO lo demas a
 //             los otros, para que nadie les quite el nucleo. En el Snapdragon 8
 //             Elite: cpu6-7 (4,32 GHz) frente a cpu0-5 (3,53 GHz).
 //   reglas    "GPU Commands=6-7;Main XThread=6+7;*=0-5". Casan por el PRINCIPIO
@@ -199,7 +200,10 @@ std::vector<Regla> ReglasAuto() {
   }
 
   std::vector<Regla> reglas;
-  for (const char* nombre : {"GPU Commands", "Main XThread"}) {
+  // "GPU Commands" es el procesador de comandos del motor de Xenos; "GPU anillo"
+  // ("GPU anillo nativo", cortado a 15 caracteres), el hilo del anillo del
+  // motor nativo, que hace su mismo papel.
+  for (const char* nombre : {"GPU Commands", "GPU anillo", "Main XThread"}) {
     Regla r;
     r.prefijo = nombre;
     r.nucleos = prime;

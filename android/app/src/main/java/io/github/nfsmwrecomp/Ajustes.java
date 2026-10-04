@@ -32,6 +32,19 @@ final class Ajustes {
     String nombreIso() { return p.getString("iso_nombre", null); }
     void nombreIso(String n) { p.edit().putString("iso_nombre", n).apply(); }
 
+    /**
+     * Lo que IsoXex ha leido de la ISO elegida. xexIso: el SHA-256 de su
+     * default.xex, que dice de que edicion del juego es (el APK solo vale para
+     * una); null si aun no se ha mirado y "" si no se pudo leer. isoFaltan:
+     * los bytes que le faltan al fichero, 0 si esta entero.
+     */
+    String xexIso() { return p.getString("iso_xex", null); }
+    long isoFaltan() { return p.getLong("iso_faltan", 0); }
+    void isoMirada(String sha, long faltan) {
+        p.edit().putString("iso_xex", sha).putLong("iso_faltan", faltan).apply();
+    }
+    void isoSinMirar() { p.edit().remove("iso_xex").remove("iso_faltan").apply(); }
+
     /** Nombre del driver importado, o null para el del sistema. */
     String driver() { return p.getString("driver", null); }
     void driver(String nombre) { p.edit().putString("driver", nombre).apply(); }
@@ -225,6 +238,76 @@ final class Ajustes {
     boolean fijarHilos() { return p.getBoolean("fijar_hilos", true); }
     void fijarHilos(boolean v) { p.edit().putBoolean("fijar_hilos", v).apply(); }
 
+    /**
+     * Motor nativo: tope de fps del juego (nfsmw_limite_fps: 30, 60, 90 o 120).
+     * Con 90 y 120 el juego cuenta sus vblank a ese ritmo; es experimental.
+     */
+    int limiteFps() { return p.getInt("limite_fps", 60); }
+    void limiteFps(int v) { p.edit().putInt("limite_fps", v).apply(); }
+
+    // --- Motor nativo: sus ajustes de graficos y sonido. Los valores por
+    // defecto son los de su nfsmw.toml para Android. Cada uno es un cvar suyo
+    // (MotorNativo.argumentos).
+
+    /** nfsmw_resolucion_interna: a la que dibuja el juego. */
+    String resolucionInterna() { return p.getString("resolucion_interna", "1280x720"); }
+    void resolucionInterna(String v) { p.edit().putString("resolucion_interna", v).apply(); }
+
+    /** nfsmw_tratamiento_visual: el filtro de color del juego (original, suave, apagado). */
+    String filtroColor() { return p.getString("filtro_color", "original"); }
+    void filtroColor(String v) { p.edit().putString("filtro_color", v).apply(); }
+
+    /** El desenfoque radial al acelerar y con el NOS (al reves que nfsmw_nativo_sin_desenfoque). */
+    boolean desenfoque() { return p.getBoolean("desenfoque", false); }
+    void desenfoque(boolean v) { p.edit().putBoolean("desenfoque", v).apply(); }
+
+    /** nfsmw_posproceso: un filtro de imagen encima (apagado, cine, vivo...). */
+    String filtroImagen() { return p.getString("filtro_imagen", "apagado"); }
+    void filtroImagen(String v) { p.edit().putString("filtro_imagen", v).apply(); }
+
+    /** nfsmw_sombras_cada: los mapas de sombras, 1 de cada N fotogramas. */
+    int sombrasCada() { return p.getInt("sombras_cada", 1); }
+    void sombrasCada(int v) { p.edit().putInt("sombras_cada", v).apply(); }
+
+    /** nfsmw_sombras_corte: 100 = como el juego; mas = menos distancia, y mas barato. */
+    int sombrasCorte() { return p.getInt("sombras_corte", 150); }
+    void sombrasCorte(int v) { p.edit().putInt("sombras_corte", v).apply(); }
+
+    /** nfsmw_cubemap_caras_max: caras del reflejo del coche por fotograma (6, 2 o 1). */
+    int reflejosCoche() { return p.getInt("reflejos_coche", 6); }
+    void reflejosCoche(int v) { p.edit().putInt("reflejos_coche", v).apply(); }
+
+    /** nfsmw_reflejo_carretera: el reflejo del asfalto mojado (y del agua). */
+    boolean reflejoAsfalto() { return p.getBoolean("reflejo_asfalto", true); }
+    void reflejoAsfalto(boolean v) { p.edit().putBoolean("reflejo_asfalto", v).apply(); }
+
+    /** nfsmw_resplandor_cielo: natural, original o suave. */
+    String resplandorCielo() { return p.getString("resplandor_cielo", "natural"); }
+    void resplandorCielo(String v) { p.edit().putString("resplandor_cielo", v).apply(); }
+
+    /**
+     * Motor nativo: el sonido por nuestro driver AAudio (nfsmw_audio_aaudio),
+     * el que arreglo los cortes con el motor de Xenos, o por el de SDL de su SDK.
+     */
+    boolean audioAAudio() { return p.getBoolean("audio_aaudio", true); }
+    void audioAAudio(boolean v) { p.edit().putBoolean("audio_aaudio", v).apply(); }
+
+    /**
+     * El modo de compatibilidad de su app: su propia emulacion de la GPU de
+     * Xbox 360, para GPUs que no pueden con el renderizador nativo. Lento.
+     */
+    boolean compatibilidad() { return p.getBoolean("compatibilidad", false); }
+    void compatibilidad(boolean v) { p.edit().putBoolean("compatibilidad", v).apply(); }
+
+    /**
+     * present_effect del presentador del SDK: como se lleva la imagen del juego
+     * a la pantalla. "bilinear" (el de siempre), "fsr" (AMD FSR 1.0: escalado
+     * con deteccion de bordes y nitidez) o "cas" (AMD CAS: solo nitidez). Los
+     * dos motores.
+     */
+    String escalado() { return p.getString("escalado", "bilinear"); }
+    void escalado(String v) { p.edit().putString("escalado", v).apply(); }
+
     /** anisotropic_override del SDK: 0 sin filtro, 2 = 2x, 3 = 4x, 5 = 16x. */
     int anisotropico() { return p.getInt("anisotropico", 3); }
     void anisotropico(int v) { p.edit().putInt("anisotropico", v).apply(); }
@@ -262,6 +345,10 @@ final class Ajustes {
      * parser de cvars pierde argumentos con opciones repetidas).
      */
     List<String> argumentos(Context ctx, boolean sonda, String nombreDriver) {
+        // El motor nativo es otro programa, con sus propios ajustes.
+        if (MotorNativo.ACTIVO) {
+            return MotorNativo.argumentos(ctx, this, sonda, nombreDriver);
+        }
         List<String> a = new ArrayList<>();
 
         // Lo que en escritorio pone nfsmw_app.h si nadie lo pide; aqui se pasa
@@ -281,6 +368,7 @@ final class Ajustes {
         // el bufer entero y el compositor de Android lo escala a la vista.
         a.add("--present_letterbox=false");
         a.add("--present_allow_overscan_cutoff=false");
+        a.add("--present_effect=" + escalado());
         a.add("--vulkan_sparse_shared_memory=false");
         a.add("--fullscreen=true");
         a.add("--resolution_scale=" + escala());
@@ -304,9 +392,11 @@ final class Ajustes {
         }
         // Muestreo a 64 como en XenDroid para maxima estabilidad de audio
         a.add("--audio_maxqframes=64");
-        // Volcado PAL Espana: idioma 5, pais 31. Es el unico admitido por ahora.
-        a.add("--user_language=5");
-        a.add("--user_country=31");
+        // El idioma y el pais de la consola, los de la edicion del juego con la
+        // que se compilo el APK (PAL Espana: 5 y 31; USA: 1 y 103). Salen de
+        // app/generated-android/edicion.json, via build.gradle.kts.
+        a.add("--user_language=" + BuildConfig.JUEGO_IDIOMA);
+        a.add("--user_country=" + BuildConfig.JUEGO_PAIS);
         // Un solo argumento aunque lleve espacios: va en el array, sin shell.
         String gamertag = gamertag();
         if (gamertagValido(gamertag) && !gamertag.isEmpty()) {
@@ -336,6 +426,15 @@ final class Ajustes {
             a.add("--log_flush_interval=2");
         }
 
+        argumentosDriver(ctx, sonda, nombreDriver, a);
+        return a;
+    }
+
+    /**
+     * El driver de GPU y la sonda: igual con los dos motores (el nativo lleva
+     * el mismo tools/parche_turnip.py en su SDK).
+     */
+    void argumentosDriver(Context ctx, boolean sonda, String nombreDriver, List<String> a) {
         // Turnip (tools/parche_turnip.py).
         a.add("--android_native_lib_dir=" + ctx.getApplicationInfo().nativeLibraryDir);
         a.add("--android_tmp_dir=" + ctx.getCacheDir().getAbsolutePath());
@@ -354,6 +453,5 @@ final class Ajustes {
             a.add("--nfsmw_sonda");
             a.add("--nfsmw_informe_sonda=" + informeSonda(ctx).getAbsolutePath());
         }
-        return a;
     }
 }

@@ -12,11 +12,14 @@ import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.InputFilter;
+import android.text.InputType;
 import android.text.TextWatcher;
+import android.text.format.Formatter;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
@@ -27,6 +30,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.radiobutton.MaterialRadioButton;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -49,10 +53,12 @@ public class SetupActivity extends AppCompatActivity {
 
     private static final int ACENTO = 0xFF6F7432;
     private static final int GRIS = 0xFFA0A0A0;
+    private static final int AVISO = 0xFFFFB74D;
     private static final String ESTADO_AVANZADO = "avanzado_abierto";
 
     private Ajustes ajustes;
     private TextView textoIso;
+    private TextView textoEdicion;
     private TextView avisoJugar;
     private RadioGroup grupoDrivers;
     private MaterialButton botonJugar;
@@ -72,6 +78,8 @@ public class SetupActivity extends AppCompatActivity {
         avanzadoAbierto = savedInstanceState != null
                 && savedInstanceState.getBoolean(ESTADO_AVANZADO, false);
         setContentView(construir());
+        // Una ISO elegida con una version anterior de la app: aun sin mirar.
+        mirarIso();
         bancoDePruebas(getIntent());
     }
 
@@ -184,6 +192,10 @@ public class SetupActivity extends AppCompatActivity {
         textoIso.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         textoIso.setTextColor(Color.WHITE);
         
+        // Para que edicion del juego es el APK y, si la ISO es de otra, el aviso.
+        textoEdicion = resumen(0);
+        textoEdicion.setPadding(0, dp(4), 0, 0);
+
         MaterialButton elegirIso = new MaterialButton(this);
         elegirIso.setText(R.string.elegir_iso);
         estilarBotonSecundario(elegirIso);
@@ -217,6 +229,7 @@ public class SetupActivity extends AppCompatActivity {
         col.addView(tarjeta(
             seccion(R.string.seccion_juego),
             textoIso,
+            textoEdicion,
             espacio(8),
             elegirIso,
             boxJugar
@@ -253,15 +266,67 @@ public class SetupActivity extends AppCompatActivity {
         // --- Graficos
         col.addView(tarjeta(
             seccion(R.string.seccion_graficos),
+            soloNativo(selector(R.string.resolucion_interna, R.string.resolucion_interna_resumen,
+                    Arrays.asList(getString(R.string.res_interna_576), getString(R.string.res_interna_720),
+                            getString(R.string.res_interna_1080)),
+                    Arrays.asList("1024x576", "1280x720", "1920x1080"), ajustes.resolucionInterna(), false,
+                    ajustes::resolucionInterna)),
+            soloNativo(selector(R.string.limite_fps, R.string.limite_fps_resumen,
+                    Arrays.asList(getString(R.string.fps_valor, 30), getString(R.string.fps_valor, 60),
+                            getString(R.string.fps_experimental, 90), getString(R.string.fps_experimental, 120)),
+                    Arrays.asList(30, 60, 90, 120), ajustes.limiteFps(), true, ajustes::limiteFps)),
             selectorSuavizado(),
-            interruptor(R.string.posprocesado, R.string.posprocesado_resumen, !ajustes.sinPosprocesado(), v -> ajustes.sinPosprocesado(!v)),
+            selector(R.string.escalado, R.string.escalado_resumen,
+                    Arrays.asList(getString(R.string.escalado_bilineal), getString(R.string.escalado_fsr),
+                            getString(R.string.escalado_cas)),
+                    Arrays.asList("bilinear", "fsr", "cas"), ajustes.escalado(), false, ajustes::escalado),
+            soloXenos(interruptor(R.string.posprocesado, R.string.posprocesado_resumen, !ajustes.sinPosprocesado(), v -> ajustes.sinPosprocesado(!v))),
             selector(R.string.anisotropico, R.string.anisotropico_resumen,
                     Arrays.asList(getString(R.string.aniso_no), getString(R.string.aniso_2), getString(R.string.aniso_4), getString(R.string.aniso_16)),
                     Arrays.asList(0, 2, 3, 5), ajustes.anisotropico(), true, ajustes::anisotropico),
-            selector(R.string.escala, R.string.escala_resumen,
+            soloXenos(selector(R.string.escala, R.string.escala_resumen,
                     Arrays.asList(getString(R.string.escala_valor, 1), getString(R.string.escala_valor, 2)),
-                    Arrays.asList(1, 2), ajustes.escala(), true, ajustes::escala)
+                    Arrays.asList(1, 2), ajustes.escala(), true, ajustes::escala)),
+            soloNativo(selector(R.string.sombras, R.string.sombras_resumen,
+                    Arrays.asList(getString(R.string.sombras_siempre), getString(R.string.sombras_cada_2)),
+                    Arrays.asList(1, 2), ajustes.sombrasCada(), true, ajustes::sombrasCada)),
+            soloNativo(selector(R.string.sombras_distancia, R.string.sombras_distancia_resumen,
+                    Arrays.asList(getString(R.string.sombras_lejos), getString(R.string.sombras_media),
+                            getString(R.string.sombras_cerca)),
+                    Arrays.asList(100, 150, 200), ajustes.sombrasCorte(), true, ajustes::sombrasCorte)),
+            soloNativo(selector(R.string.reflejos_coche, R.string.reflejos_coche_resumen,
+                    Arrays.asList(getString(R.string.calidad_alta), getString(R.string.calidad_media),
+                            getString(R.string.calidad_baja)),
+                    Arrays.asList(6, 2, 1), ajustes.reflejosCoche(), true, ajustes::reflejosCoche)),
+            soloNativo(interruptor(R.string.reflejo_asfalto, R.string.reflejo_asfalto_resumen,
+                    ajustes.reflejoAsfalto(), ajustes::reflejoAsfalto)),
+            soloNativo(selector(R.string.resplandor_cielo, R.string.resplandor_cielo_resumen,
+                    Arrays.asList(getString(R.string.cielo_natural), getString(R.string.cielo_original),
+                            getString(R.string.cielo_suave)),
+                    Arrays.asList("natural", "original", "suave"), ajustes.resplandorCielo(), true,
+                    ajustes::resplandorCielo)),
+            soloNativo(selector(R.string.filtro_color, R.string.filtro_color_resumen,
+                    Arrays.asList(getString(R.string.filtro_color_original), getString(R.string.filtro_color_suave),
+                            getString(R.string.filtro_color_apagado)),
+                    Arrays.asList("original", "suave", "apagado"), ajustes.filtroColor(), true,
+                    ajustes::filtroColor)),
+            soloNativo(interruptor(R.string.desenfoque, R.string.desenfoque_resumen,
+                    ajustes.desenfoque(), ajustes::desenfoque)),
+            soloNativo(desplegable(R.string.filtro_imagen, R.string.filtro_imagen_resumen,
+                    Arrays.asList(getString(R.string.filtro_imagen_no), getString(R.string.filtro_imagen_cine),
+                            getString(R.string.filtro_imagen_vivo), getString(R.string.filtro_imagen_calido),
+                            getString(R.string.filtro_imagen_frio), getString(R.string.filtro_imagen_sepia),
+                            getString(R.string.filtro_imagen_noir), getString(R.string.filtro_imagen_crt)),
+                    Arrays.asList("apagado", "cine", "vivo", "calido", "frio", "sepia", "noir", "crt"),
+                    ajustes.filtroImagen(), ajustes::filtroImagen))
         ));
+
+        // --- Sonido (motor nativo: por donde sale el audio)
+        col.addView(soloNativo(tarjeta(
+            seccion(R.string.seccion_sonido),
+            interruptor(R.string.audio_aaudio, R.string.audio_aaudio_resumen,
+                    ajustes.audioAAudio(), ajustes::audioAAudio)
+        )));
 
         // --- Rendimiento
         grupoDrivers = new RadioGroup(this);
@@ -349,16 +414,20 @@ public class SetupActivity extends AppCompatActivity {
         textoInforme.setPadding(0, dp(12), 0, 0);
         
         avanzado.addView(resumen(R.string.avanzado_resumen));
-        avanzado.addView(interruptor(R.string.una_pasada, R.string.una_pasada_resumen, ajustes.unaPasada(), ajustes::unaPasada));
-        avanzado.addView(interruptor(R.string.edram_fsi, R.string.edram_fsi_resumen, ajustes.edramEnShader(), ajustes::edramEnShader));
-        avanzado.addView(interruptor(R.string.oclusion, R.string.oclusion_resumen, ajustes.oclusion(), ajustes::oclusion));
-        avanzado.addView(interruptor(R.string.exposicion, R.string.exposicion_resumen, ajustes.exposicionFiel(), ajustes::exposicionFiel));
-        avanzado.addView(interruptor(R.string.memexport, R.string.memexport_resumen, ajustes.lecturaMemexport(), ajustes::lecturaMemexport));
-        avanzado.addView(interruptor(R.string.paginas, R.string.paginas_resumen, ajustes.refrescarPaginas(), ajustes::refrescarPaginas));
+        // Los de la GPU de Xbox 360 imitada: con el motor nativo no existen.
+        avanzado.addView(soloXenos(interruptor(R.string.una_pasada, R.string.una_pasada_resumen, ajustes.unaPasada(), ajustes::unaPasada)));
+        avanzado.addView(soloXenos(interruptor(R.string.edram_fsi, R.string.edram_fsi_resumen, ajustes.edramEnShader(), ajustes::edramEnShader)));
+        avanzado.addView(soloXenos(interruptor(R.string.oclusion, R.string.oclusion_resumen, ajustes.oclusion(), ajustes::oclusion)));
+        avanzado.addView(soloXenos(interruptor(R.string.exposicion, R.string.exposicion_resumen, ajustes.exposicionFiel(), ajustes::exposicionFiel)));
+        avanzado.addView(soloXenos(interruptor(R.string.memexport, R.string.memexport_resumen, ajustes.lecturaMemexport(), ajustes::lecturaMemexport)));
+        avanzado.addView(soloXenos(interruptor(R.string.paginas, R.string.paginas_resumen, ajustes.refrescarPaginas(), ajustes::refrescarPaginas)));
         // En release no hay registro: el interruptor no haria nada.
         if (BuildConfig.DEBUG) {
             avanzado.addView(interruptor(R.string.registro_detallado, R.string.registro_detallado_resumen, ajustes.registroDetallado(), ajustes::registroDetallado));
         }
+        // Motor nativo: su emulacion de la GPU, para las GPU que no pueden con el renderizador.
+        avanzado.addView(soloNativo(interruptor(R.string.compatibilidad, R.string.compatibilidad_resumen,
+                ajustes.compatibilidad(), ajustes::compatibilidad)));
         avanzado.addView(espacio(16));
         avanzado.addView(titulo(R.string.probar_vulkan));
         avanzado.addView(resumen(R.string.probar_vulkan_resumen));
@@ -439,6 +508,22 @@ public class SetupActivity extends AppCompatActivity {
                 actual, false, ajustes::resolucion);
     }
 
+    /** Un ajuste que solo existe con el motor de Xenos: con el nativo no se muestra. */
+    private View soloXenos(View v) {
+        if (MotorNativo.ACTIVO) {
+            v.setVisibility(View.GONE);
+        }
+        return v;
+    }
+
+    /** Y al reves. */
+    private View soloNativo(View v) {
+        if (!MotorNativo.ACTIVO) {
+            v.setVisibility(View.GONE);
+        }
+        return v;
+    }
+
     private View selectorSuavizado() {
         View opcionesMsaa = selector(R.string.msaa_muestras, R.string.msaa_muestras_resumen,
                 Arrays.asList(getString(R.string.escala_valor, 2), getString(R.string.escala_valor, 4)),
@@ -457,6 +542,16 @@ public class SetupActivity extends AppCompatActivity {
 
         LinearLayout caja = new LinearLayout(this);
         caja.setOrientation(LinearLayout.VERTICAL);
+        if (MotorNativo.ACTIVO) {
+            // El motor nativo pinta la escena en una pasada, sin MSAA: solo hay
+            // FXAA, y sin niveles.
+            caja.addView(selector(R.string.suavizado, R.string.suavizado_resumen,
+                    Arrays.asList(getString(R.string.aa_no), getString(R.string.aa_fxaa)),
+                    Arrays.asList(Ajustes.AA_NO, Ajustes.AA_FXAA),
+                    Ajustes.AA_FXAA.equals(ajustes.antialiasing()) ? Ajustes.AA_FXAA : Ajustes.AA_NO,
+                    true, ajustes::antialiasing));
+            return caja;
+        }
         caja.addView(selector(R.string.suavizado, R.string.suavizado_resumen,
                 Arrays.asList(getString(R.string.aa_no), getString(R.string.aa_msaa),
                         getString(R.string.aa_fxaa)),
@@ -554,8 +649,18 @@ public class SetupActivity extends AppCompatActivity {
         if (resumen != 0) {
             caja.addView(resumen(resumen));
         }
+        // En fila solo si caben: con textos largos los botones se estrechan, el
+        // texto se parte en varias lineas y la fila queda alta, con un hueco en
+        // blanco debajo. Entonces, en columna.
+        int total = 0;
+        int mayor = 0;
+        for (String t : textos) {
+            total += t.length();
+            mayor = Math.max(mayor, t.length());
+        }
+        boolean enFila = horizontal && total <= 30 && mayor <= 14;
         RadioGroup grupo = new RadioGroup(this);
-        grupo.setOrientation(horizontal ? RadioGroup.HORIZONTAL : RadioGroup.VERTICAL);
+        grupo.setOrientation(enFila ? RadioGroup.HORIZONTAL : RadioGroup.VERTICAL);
         grupo.setPadding(0, dp(8), 0, 0);
         for (int i = 0; i < textos.size(); i++) {
             MaterialRadioButton rb = new MaterialRadioButton(this);
@@ -583,6 +688,44 @@ public class SetupActivity extends AppCompatActivity {
         return caja;
     }
 
+    /**
+     * Como selector(), pero en un menu desplegable: para las listas largas, que
+     * en botones ocupan media pantalla.
+     */
+    private <T> View desplegable(int titulo, int resumen, List<String> textos, List<T> valores,
+                                 T actual, Consumer<T> guardar) {
+        LinearLayout caja = new LinearLayout(this);
+        caja.setOrientation(LinearLayout.VERTICAL);
+        caja.setPadding(0, dp(12), 0, dp(12));
+        if (titulo != 0) {
+            caja.addView(titulo(titulo));
+        }
+        if (resumen != 0) {
+            caja.addView(resumen(resumen));
+        }
+        TextInputLayout campo = new TextInputLayout(this, null,
+                com.google.android.material.R.attr.textInputOutlinedExposedDropdownMenuStyle);
+        campo.setBoxStrokeColor(ACENTO);
+        MaterialAutoCompleteTextView lista = new MaterialAutoCompleteTextView(campo.getContext());
+        // Solo se elige de la lista: ni teclado ni texto libre.
+        lista.setInputType(InputType.TYPE_NULL);
+        lista.setTextColor(Color.WHITE);
+        lista.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, textos));
+        int elegido = Math.max(0, valores.indexOf(actual));
+        lista.setText(textos.get(elegido), false);
+        lista.setOnItemClickListener((padre, vista, posicion, id) -> guardar.accept(valores.get(posicion)));
+        campo.addView(lista, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        // Despues de meter el campo: la flecha del menu necesita su AutoCompleteTextView.
+        campo.setEndIconMode(TextInputLayout.END_ICON_DROPDOWN_MENU);
+        campo.setEndIconTintList(ColorStateList.valueOf(Color.WHITE));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(8);
+        caja.addView(campo, lp);
+        return caja;
+    }
+
     private static ColorStateList segunActivado(int desactivado, int activado) {
         return new ColorStateList(
                 new int[][] {{-android.R.attr.state_enabled}, {}},
@@ -592,8 +735,31 @@ public class SetupActivity extends AppCompatActivity {
     private void refrescar() {
         String nombre = ajustes.nombreIso();
         textoIso.setText(ajustes.iso() == null
-                ? getString(R.string.sin_iso)
+                ? getString(R.string.sin_iso, BuildConfig.EDICION)
                 : getString(R.string.iso_elegida, nombre != null ? nombre : ajustes.iso()));
+        // El APK lleva el codigo de una sola edicion del juego: se dice cual y,
+        // si el default.xex de la ISO elegida es otro o a la ISO le falta el
+        // final, se avisa. No se impide jugar: lo que no se ha podido leer no
+        // demuestra nada.
+        String xex = ajustes.xexIso();
+        boolean mirada = ajustes.iso() != null && xex != null;
+        boolean incompleta = mirada && ajustes.isoFaltan() > 0;
+        boolean otraEdicion = mirada && !xex.isEmpty()
+                && !BuildConfig.EDICION_XEX.isEmpty() && !xex.equals(BuildConfig.EDICION_XEX);
+        if (incompleta) {
+            textoEdicion.setText(getString(R.string.iso_incompleta,
+                    Formatter.formatShortFileSize(this, ajustes.isoFaltan())));
+        } else {
+            String texto = getString(
+                    otraEdicion ? R.string.iso_otra_edicion : R.string.edicion_apk,
+                    BuildConfig.EDICION);
+            if (MotorNativo.ACTIVO && !otraEdicion) {
+                texto += " " + getString(R.string.motor_nativo);
+            }
+            textoEdicion.setText(texto);
+        }
+        textoEdicion.setTextColor(incompleta || otraEdicion ? AVISO : GRIS);
+        textoEdicion.setVisibility(BuildConfig.CON_JUEGO ? View.VISIBLE : View.GONE);
         boolean puedeJugar = BuildConfig.CON_JUEGO && ajustes.iso() != null;
         botonJugar.setEnabled(puedeJugar);
         avisoJugar.setText(BuildConfig.CON_JUEGO ? R.string.jugar_sin_iso : R.string.jugar_sin_juego);
@@ -694,6 +860,8 @@ public class SetupActivity extends AppCompatActivity {
             }
             ajustes.iso(uri.toString());
             ajustes.nombreIso(nombreDe(uri));
+            ajustes.isoSinMirar();
+            mirarIso();
         } else if (peticion == PEDIR_DRIVER) {
             try {
                 Drivers.Driver d = Drivers.importar(this, uri);
@@ -706,6 +874,30 @@ public class SetupActivity extends AppCompatActivity {
             }
         }
         refrescar();
+    }
+
+    /**
+     * Lee de la ISO elegida de que edicion es y si esta entera (IsoXex), si aun
+     * no se sabe. Son unos megas de lectura: en otro hilo.
+     */
+    private void mirarIso() {
+        final String iso = ajustes.iso();
+        if (iso == null || ajustes.xexIso() != null) {
+            return;
+        }
+        final Context app = getApplicationContext();
+        new Thread(() -> {
+            IsoXex.Info info = IsoXex.mirar(app, Uri.parse(iso));
+            runOnUiThread(() -> {
+                if (iso.equals(ajustes.iso())) {
+                    // Vacio = no se pudo leer; asi no se reintenta en cada arranque.
+                    ajustes.isoMirada(info != null ? info.xex : "", info != null ? info.faltan : 0);
+                    if (!isFinishing() && !isDestroyed()) {
+                        refrescar();
+                    }
+                }
+            });
+        }, "mirar-iso").start();
     }
 
     private String nombreDe(Uri uri) {

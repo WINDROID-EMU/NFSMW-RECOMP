@@ -10,6 +10,60 @@ proyecto vibe-codeado: ver la sección "This fork" del [README](README.md).
 
 ### Añadido
 
+- Motor nativo en Android (ver [docs/motor-nativo.md](docs/motor-nativo.md)): el APK se puede
+  compilar con el renderizador nativo de
+  [nfsmw-android](https://github.com/codepdbh/nfsmw-android), el port a Android de
+  [nfsmw-nx](https://github.com/StevensND/nfsmw-nx), en vez de con la GPU de Xbox 360 imitada
+  del SDK: `gradlew assembleRelease -Pnfsmw.motor=nativo`. Es otro árbol nativo entero (su
+  SDK, su app y su código generado) que `tools/android/preparar_nativo.py` deja preparado
+  al lado del repositorio; de aquí solo entra `nativo_android.cpp`, los puentes JNI. La app
+  de Java es la misma: pantalla de inicio, mando táctil y editor, idiomas, y la ISO elegida
+  con el selector del sistema y leída sin copiarla (`parche_iso.py` se aplica tal cual a su
+  SDK, más `tools/android/parche_nativo.py`), los drivers propios (Turnip, con
+  `parche_turnip.py` en su SDK), la sonda de Vulkan, los hilos fijados a núcleos y la salida de audio por nuestro driver
+  AAudio (con el volumen, el limitador y el silencio durante las películas de su SDK). Ajustes
+  nuevos para ese motor: resolución de render, límite de fps, sombras, reflejos, resplandor
+  del cielo, filtros de color e imagen, desenfoque y modo de compatibilidad. El
+  motor de Xenos sigue siendo el que sale por defecto. Funciona en el móvil y va mejor que
+  el de Xenos; lo portado después (Turnip, sonda, afinidad y opciones) falta probarlo una a
+  una.
+- Motor nativo para la edición **USA**: `preparar_nativo.py --iso <ISO USA>` crea `app_usa`,
+  la app de nfsmw-android con sus 56.802 direcciones PAL traducidas, y
+  `gradlew assembleRelease -Pnfsmw.motor=nativo -Pnfsmw.edicion=usa` la compila. Mismo
+  método que la build USA de nfsmw-nx, con su `crear_arbol.py` y sus parejas corregidas,
+  pero con nuestro `emparejar.py` (sin numpy), que resuelve solo 10 de esas 11 parejas.
+  Las funciones que toca su código nativo son idénticas en las dos ediciones; los shaders
+  de resplandor y cielo cambian de huella (`ediciones.json`, `"nativo"`), y la biblioteca de
+  shaders sale igual que la oficial de nfsmw-nx para la USA.
+- Motor nativo para la edición **japonesa** (`-Pnfsmw.edicion=jpn`, idioma 2 y país 53). En
+  ella `.data` crece 0x5A0 bytes y los datos se mueven dentro: `emparejar.py` los traduce
+  por el código que calcula cada dirección (`lis` + parte baja, como su
+  `datos_por_referencias.py`), y `comprobar_parejas` exige que cada dirección que calculan
+  las funciones que usa la app sea la traducción de la PAL (846, todas bien, en la USA y en
+  la japonesa). Cambian tres huellas de shader (resplandor, cielo y composición); la
+  biblioteca sale igual que la oficial de nfsmw-nx.
+- Escalado a la pantalla con AMD FSR 1.0 o CAS (Gráficos → Escalado a la pantalla), en los
+  dos motores: el presentador del SDK ya los traía, con sus shaders precompilados, pero
+  solo los activaba descargando el FidelityFX SDK de escritorio.
+- Ediciones del juego en Android (ver [docs/ediciones.md](docs/ediciones.md)): además de la
+  PAL España se puede compilar para la **USA**. `tools/android/generar_codigo.py` reconoce
+  la edición del `default.xex` (por su SHA-256 o por el PDB que lleva dentro) y traduce las
+  direcciones de `overrides.toml`, `huecos.toml` y los ganchos de C++, que están escritas
+  para la española, con la tabla de `tools/ediciones/<edición>/direcciones.tsv`. El idioma
+  y el país que se pasan al juego salen de la edición (antes iban fijos a 5 y 31). Método
+  de [nfsmw-nx](https://github.com/StevensND/nfsmw-nx), reescrito sin dependencias:
+  `tools/ediciones/imagen.py` saca la imagen del XEX (AES y LZX en Python puro),
+  `emparejar.py` empareja las dos ediciones y `ediciones.py` hace la tabla y la aplica.
+  Comprobado hasta el codegen y la compilación del APK: mismas funciones, avisos y huecos
+  que PAL, y las 11 funciones enganchadas idénticas. **Sin probar en el juego**: la ISO de
+  USA con la que se hizo estaba incompleta.
+- `emparejar.py` toma por datos las tablas de saltos aunque no cambien de bloque de 64 KB
+  (antes, una entrada `0x82xxxxxx` se leía como un `lwz` con otro inmediato), y con
+  `por_contenido=False` no traduce por coincidencia de contenido, que en la USA cayó una
+  vez dentro de otra función.
+- La pantalla de inicio dice para qué edición se compiló el APK y avisa si la ISO elegida
+  es de otra edición o está incompleta (le falta el final: una descarga o una extracción
+  cortada), en vez de dejar una pantalla en negro.
 - Port a Android para Snapdragon, en desarrollo (ver [docs/android.md](docs/android.md)):
   `tools/android/preparar_sdk.py` deja un SDK v0.10.0 aparte con el parche Android y
   libadrenotools; `tools/android/generar_codigo.py` genera el código con ese SDK; y

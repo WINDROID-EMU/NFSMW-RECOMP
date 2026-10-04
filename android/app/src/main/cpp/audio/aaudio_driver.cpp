@@ -1,9 +1,28 @@
 #include "aaudio_driver.h"
 
+#include <rex/logging.h>
 #include <rex/system/xmemory.h>
 
 #include <SDL3/SDL_events.h>
 #include <android/log.h>
+
+#if NFSMW_MOTOR_NATIVO
+// Con el motor nativo (nfsmw-android) su SDK trae lo que su driver de SDL hace
+// ademas de sacar el sonido, y aqui se hace igual:
+//   - audio_ganancia_pct, el volumen del juego (GetOutputGain);
+//   - un limitador con los dos canales enlazados, sobre el pliegue sin recortar;
+//   - callar el juego mientras suena la pista propia de una pelicula
+//     (IsGameOutputSuppressed), que si no se oye doble;
+//   - el subsistema de audio de SDL iniciado: la pista de las peliculas va por
+//     SDL (nfsmw_video_wmv3.cpp) y lo da por hecho.
+#include <SDL3/SDL_init.h>
+
+#include <rex/audio/downmix.h>
+#include <rex/audio/output_limiter.h>
+#include <rex/cvar.h>
+
+REXCVAR_DECLARE(int32_t, audio_ganancia_pct);
+#endif
 
 #include <algorithm>
 #include <cstring>
@@ -97,6 +116,13 @@ void AndroidAAudioDriver::CerrarFlujo() {
 }
 
 bool AndroidAAudioDriver::Initialize() {
+#if NFSMW_MOTOR_NATIVO
+  SetOutputGain(float(REXCVAR_GET(audio_ganancia_pct)) / 100.0f);
+  sdl_audio_iniciado_ = SDL_InitSubSystem(SDL_INIT_AUDIO);
+  if (!sdl_audio_iniciado_) {
+    LOGW("SDL audio no inicia (%s): las peliculas iran sin sonido", SDL_GetError());
+  }
+#endif
   {
     std::lock_guard<std::mutex> lock(control_);
     if (!AbrirFlujo()) {
@@ -111,14 +137,16 @@ bool AndroidAAudioDriver::Initialize() {
 void AndroidAAudioDriver::Pause() {
   std::lock_guard<std::mutex> lock(control_);
   if (stream_) {
-    AAudioStream_requestPause(stream_);
+    const aaudio_result_t r = AAudioStream_requestPause(stream_);
+    REXLOG_INFO("[aaudio] pausa: {}", AAudio_convertResultToText(r));
   }
 }
 
 void AndroidAAudioDriver::Resume() {
   std::lock_guard<std::mutex> lock(control_);
   if (stream_) {
-    AAudioStream_requestStart(stream_);
+    const aaudio_result_t r = AAudioStream_requestStart(stream_);
+    REXLOG_INFO("[aaudio] reanudar: {}", AAudio_convertResultToText(r));
   }
 }
 
@@ -145,6 +173,13 @@ void AndroidAAudioDriver::Shutdown() {
   if (semaphore_) {
     semaphore_->Release(16, nullptr);
   }
+
+#if NFSMW_MOTOR_NATIVO
+  if (sdl_audio_iniciado_) {
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    sdl_audio_iniciado_ = false;
+  }
+#endif
 
   std::lock_guard<std::mutex> lock(control_);
   CerrarFlujo();
@@ -190,6 +225,26 @@ void AndroidAAudioDriver::SubmitFrame(uint32_t samples_ptr) {
   // capacidad es multiplo de 512, asi que un bloque nunca cruza el final: basta
   // una sola posicion base, sin partir la copia en dos.
   float* dst = anillo_.get() + (w & kMascara);
+#if NFSMW_MOTOR_NATIVO
+  if (IsGameOutputSuppressed()) {
+    // Suena la pista de una pelicula: el juego calla, pero el bloque se
+    // publica igual, que el ritmo lo sigue marcando el DAC.
+    std::memset(dst, 0, kFloatsPorBloque * sizeof(float));
+  } else {
+    // Sin recortar: el limitador necesita ver los picos de verdad.
+    const float ganancia = GetOutputGain();
+    for (size_t i = 0; i < kMuestrasPorCanal; ++i) {
+      const float c = LoadBEFloat(ch_c[i]) * kCenterGain;
+      const float lfe = LoadBEFloat(ch_lfe[i]) * kLfeGain;
+      const float mid = c + lfe;
+      const float left = LoadBEFloat(ch_fl[i]) + mid + LoadBEFloat(ch_bl[i]) * kSurroundGain;
+      const float right = LoadBEFloat(ch_fr[i]) + mid + LoadBEFloat(ch_br[i]) * kSurroundGain;
+      dst[i * 2 + 0] = left * ganancia;
+      dst[i * 2 + 1] = right * ganancia;
+    }
+    LimitOutput(dst, kMuestrasPorCanal, kCanalesSalida, kSampleRate, limitador_ganancia_);
+  }
+#else
   for (size_t i = 0; i < kMuestrasPorCanal; ++i) {
     const float c = LoadBEFloat(ch_c[i]) * kCenterGain;
     const float lfe = LoadBEFloat(ch_lfe[i]) * kLfeGain;
@@ -199,6 +254,7 @@ void AndroidAAudioDriver::SubmitFrame(uint32_t samples_ptr) {
     dst[i * 2 + 0] = std::clamp(left, -1.0f, 1.0f);
     dst[i * 2 + 1] = std::clamp(right, -1.0f, 1.0f);
   }
+#endif
 
   // Publicar el bloque: el release garantiza que el consumidor ve las muestras
   // escritas antes que el indice nuevo.

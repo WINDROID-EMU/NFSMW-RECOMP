@@ -52,6 +52,14 @@ adb install -r app\build\outputs\apk\release\app-release.apk
 las Build Tools (`VC\Tools\Llvm\x64\bin`) y el CMake del SDK de Android sirven.
 Sin código generado, el APK solo lleva la sonda de Vulkan.
 
+Esto es el motor de Xenos, el de por defecto. El APK también se puede compilar con el
+**renderizador nativo** de nfsmw-android (`-Pnfsmw.motor=nativo`), que no imita la GPU de
+la Xbox 360: ver [motor-nativo.md](motor-nativo.md).
+
+`generar_codigo.py` mira primero de qué **edición del juego** es tu `default.xex` (PAL
+España o USA) y, si no es la española, traduce las direcciones del proyecto a las de esa
+edición. El APK que sale vale solo para esa edición. Ver [ediciones.md](ediciones.md).
+
 La primera compilación del APK tarda (el SDK entero y 133 ficheros generados).
 Los ficheros generados se compilan de 4 en 4 (`NFSMW_JOBS_RECOMP`): con 16 GB de
 RAM y 8 a la vez, clang se queda sin memoria.
@@ -64,7 +72,8 @@ RAM y 8 a la vez, clang se queda sin memoria.
    SDK acepta la GPU y si hay texturas BC. No necesita el juego.
 3. **Importar un driver Turnip** (opcional): un `.zip` para adrenotools, con su
    `meta.json`.
-4. **Elegir la ISO** (PAL España). No se copia: se lee en su sitio.
+4. **Elegir la ISO**, la de la edición con la que compilaste el APK (la pantalla de
+   inicio dice cuál, y avisa si la ISO elegida es de otra). No se copia: se lee en su sitio.
 5. Conecta un mando y **Jugar**.
 
 Los registros quedan en `Android/data/io.github.nfsmwrecomp/files/logs/nfsmw.log`.
@@ -647,7 +656,7 @@ La línea de comandos manda sobre `nfsmw.toml`. La app pasa siempre:
 --occlusion_query_enable, --readback_resolve, --readback_memexport,
 --clear_memory_page_state, --anisotropic_override   los de Rendimiento
 --thread_affinity=auto                   con "Fijar hilos a núcleos" (de fábrica)
---user_language=5 --user_country=31      PAL España
+--user_language, --user_country          los de la edición del APK: 5 y 31 (PAL España), 1 y 103 (USA)
 --user_data_root=.../files/datos
 --log_file=.../files/logs/nfsmw.log --log_level=info|debug
 --log_flush_interval=2                   si no, el fichero va minutos por detrás

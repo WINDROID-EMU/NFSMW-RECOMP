@@ -44,7 +44,7 @@
             android:name=".GameActivity"
             android:exported="false"
             android:process=":juego"
-            android:screenOrientation="landscape"
+            android:screenOrientation="sensorLandscape"
             android:preferMinimalPostProcessing="true"
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
             android:configChanges="layoutDirection|locale|grammaticalGender|fontScale|fontWeightAdjustment|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation" />

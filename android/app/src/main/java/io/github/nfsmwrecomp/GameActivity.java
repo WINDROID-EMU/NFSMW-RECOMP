@@ -93,6 +93,12 @@ public class GameActivity extends SDLActivity {
         // mandando.
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
 
+        // Motor nativo: sus carpetas, sus ajustes y sus shaders, antes de que
+        // super.onCreate cargue las librerias.
+        if (MotorNativo.ACTIVO) {
+            MotorNativo.preparar(this);
+        }
+
         argumentos = lista.toArray(new String[0]);
         // Release: sin registro (ver Ajustes.argumentos).
         if (BuildConfig.DEBUG) Log.i(TAG, "Argumentos: " + String.join(" ", argumentos));
@@ -281,7 +287,21 @@ public class GameActivity extends SDLActivity {
      */
     @Override
     protected String[] getLibraries() {
-        return new String[] {"rexruntime", "main"};
+        // Con el motor nativo SDL3 va en su propia libreria, como espera SDLActivity.
+        return MotorNativo.ACTIVO
+                ? new String[] {"SDL3", "main"}
+                : new String[] {"rexruntime", "main"};
+    }
+
+    /**
+     * SDL pide una orientacion segun el tamano de su ventana al crearla, y con
+     * un bufer fijo (720x480, 1280x720) o al volver de segundo plano le puede
+     * salir vertical. El juego va siempre apaisado, hacia el lado que se gire
+     * el movil. La pantalla de inicio no: esa gira libremente.
+     */
+    @Override
+    public void setOrientationBis(int w, int h, boolean resizable, String hint) {
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
     }
 
     @Override

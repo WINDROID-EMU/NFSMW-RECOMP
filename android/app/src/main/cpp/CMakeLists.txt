@@ -39,6 +39,16 @@ set(NFSMW_JOBS_RECOMP "4" CACHE STRING "Ficheros del codigo generado a la vez")
 get_filename_component(NFSMW_REPO "${NFSMW_REPO}" ABSOLUTE)
 get_filename_component(NFSMW_SDK "${NFSMW_SDK}" ABSOLUTE)
 
+# El motor. "xenos": todo lo de este fichero, el SDK imitando la GPU de la Xbox
+# 360. "nativo": el renderizador nativo de nfsmw-android, que trae su propio
+# SDK, su app y su codigo generado; de aqui solo entran los puentes JNI del
+# lanzador. Son dos arboles nativos distintos: ver nativo/nativo.cmake.
+set(NFSMW_MOTOR "xenos" CACHE STRING "Motor del juego: xenos o nativo")
+if(NFSMW_MOTOR STREQUAL "nativo")
+    include("${CMAKE_CURRENT_SOURCE_DIR}/nativo/nativo.cmake")
+    return()
+endif()
+
 if(NOT EXISTS "${NFSMW_SDK}/.nfsmw-android/rexglue-sdk-v0.10.0-android.patch.aplicado")
     message(FATAL_ERROR
         "No hay un SDK preparado para Android en:\n  ${NFSMW_SDK}\n"
@@ -56,6 +66,20 @@ set(REXGLUE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 # En Android solo hay Vulkan.
 set(REXGLUE_USE_VULKAN ON CACHE BOOL "" FORCE)
 set(REXGLUE_USE_D3D12 OFF CACHE BOOL "" FORCE)
+
+# FSR 1.0 y CAS del presentador del SDK (present_effect = fsr | cas). Sus shaders
+# vienen precompilados en src/ui/shaders/vulkan_spirv, pero el SDK solo los
+# activa si se descarga el FidelityFX SDK de AMD, que es para escritorio (y solo
+# hace falta para FSR 2/3, los temporales). Sin el runtime, el codigo ya cae en
+# FSR 1.0 y CAS.
+#
+# En TODO el arbol, porque cambia la forma de las clases del presentador, que
+# incluyen la interfaz, los graficos, la entrada, el kernel y la app: una
+# definicion distinta entre dos ficheros seria un fallo de los que no avisan. En
+# todo menos en el codigo generado del juego, que no lo usa: asi no se
+# recompila entero.
+add_compile_definitions(
+    $<$<NOT:$<STREQUAL:$<TARGET_PROPERTY:NAME>,nfsmw_recomp>>:REX_HAS_FIDELITYFX_SDK=1>)
 
 add_subdirectory("${NFSMW_SDK}" rexglue-sdk)
 
@@ -116,19 +140,83 @@ target_link_libraries(main PRIVATE rex::runtime nfsmw_cabeceras android log)
 target_compile_definitions(main PRIVATE REXGLUE_BUILD_CONFIG="$<CONFIG>")
 
 if(NFSMW_CON_JUEGO)
+    # Los fuentes que nombran funciones y datos del juego POR SU DIRECCION. Las
+    # direcciones son las de la edicion de referencia (PAL Espana): para ella
+    # se compilan tal cual; para otra, traducidos (mas abajo).
+    #
+    # El menu de ajustes del juego (tecla ESC en escritorio) lo usa
+    # app/src/nfsmw_app.h, que se comparte con la version de PC.
+    set(NFSMW_FUENTES_JUEGO
+        "${CMAKE_CURRENT_SOURCE_DIR}/juego.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/ganchos.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/render_targets.cpp"
+        "${NFSMW_REPO}/app/src/nfsmw_menu.cpp")
+
+    # -------------------------------------------------------------------------
+    #  La edicion del juego
+    #
+    #  generar_codigo.py apunta en edicion.json, junto al codigo generado, de
+    #  que edicion es el default.xex con el que se genero. Si no es la de
+    #  referencia, cada direccion de esos fuentes y de sus cabeceras se pasa a
+    #  la de esa edicion con su tabla (tools/ediciones/<edicion>/direcciones.tsv)
+    #  y se compilan las copias. Un gancho puesto en la direccion espanola
+    #  caeria, en otra edicion, en mitad de otra funcion. Ver docs/ediciones.md.
+    # -------------------------------------------------------------------------
+    get_filename_component(NFSMW_GENERADO "${NFSMW_GEN_DIR}/.." ABSOLUTE)
+    set(NFSMW_EDICION "")
+    if(EXISTS "${NFSMW_GENERADO}/edicion.json")
+        file(READ "${NFSMW_GENERADO}/edicion.json" _edicion)
+        string(JSON _de_referencia GET "${_edicion}" referencia)
+        if(NOT _de_referencia)
+            string(JSON NFSMW_EDICION GET "${_edicion}" tabla)
+        endif()
+    endif()
+
+    if(NFSMW_EDICION)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        set(_traducidos "${NFSMW_GENERADO}/edicion/src")
+        file(GLOB _cabeceras CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${NFSMW_REPO}/app/src/*.h")
+        set(_fuentes "")
+        set(_salidas "")
+        foreach(_origen IN LISTS NFSMW_FUENTES_JUEGO _cabeceras)
+            get_filename_component(_nombre "${_origen}" NAME)
+            list(APPEND _salidas "${_traducidos}/${_nombre}")
+            if(_origen IN_LIST NFSMW_FUENTES_JUEGO)
+                list(APPEND _fuentes "${_traducidos}/${_nombre}")
+            endif()
+        endforeach()
+        add_custom_command(
+            OUTPUT ${_salidas}
+            COMMAND Python3::Interpreter "${NFSMW_REPO}/tools/ediciones/ediciones.py"
+                    fuentes "${NFSMW_EDICION}" "${_traducidos}"
+                    ${NFSMW_FUENTES_JUEGO} ${_cabeceras}
+            DEPENDS ${NFSMW_FUENTES_JUEGO} ${_cabeceras}
+                    "${NFSMW_REPO}/tools/ediciones/ediciones.py"
+                    "${NFSMW_REPO}/tools/ediciones/${NFSMW_EDICION}/direcciones.tsv"
+            COMMENT "NFSMW: direcciones de los ganchos a la edicion '${NFSMW_EDICION}'"
+            VERBATIM)
+        # Las cabeceras traducidas tambien, para que existan antes de compilar.
+        target_sources(main PRIVATE ${_salidas})
+        # Por delante de app/src: quien incluya nfsmw_app.h toma la traducida.
+        # Y la carpeta de los originales, para lo que estos incluyen por ruta
+        # relativa (audio/...), que desde la copia ya no se encuentra solo.
+        target_include_directories(main PRIVATE
+            "${_traducidos}" "${CMAKE_CURRENT_SOURCE_DIR}")
+        set(NFSMW_FUENTES_JUEGO ${_fuentes})
+        message(STATUS "NFSMW: edicion '${NFSMW_EDICION}', ganchos traducidos en ${_traducidos}")
+    else()
+        message(STATUS "NFSMW: edicion de referencia (PAL Espana)")
+    endif()
+
     # windowed_app_main_sdl.cpp del SDK NO se compila aqui: es la entrada de
     # escritorio y llama a GetWindowedAppCreator(), que en Android no existe.
     # Alli el SDK define XE_UI_WINDOWED_APPS_IN_LIBRARY y REX_DEFINE_APP apunta
     # la app en una tabla; android_main.cpp la pide por su nombre.
     target_sources(main PRIVATE
-        juego.cpp
-        ganchos.cpp
-        render_targets.cpp
+        ${NFSMW_FUENTES_JUEGO}
         afinidad.cpp
         audio/aaudio_driver.cpp
-        # El menu de ajustes del juego (tecla ESC en escritorio): lo usa
-        # app/src/nfsmw_app.h, que se comparte con la version de PC.
-        "${NFSMW_REPO}/app/src/nfsmw_menu.cpp"
         "${NFSMW_SDK}/src/ui/rex_app.cpp")
     target_include_directories(main PRIVATE
         "${NFSMW_REPO}/app/src"

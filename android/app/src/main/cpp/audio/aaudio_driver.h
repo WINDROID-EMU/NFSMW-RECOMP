@@ -73,6 +73,13 @@ class AndroidAAudioDriver final : public AudioDriver {
   // reconectar, que tocan stream_ y reconexion_ desde hilos distintos. El
   // callback de datos no lo usa nunca.
   std::mutex control_;
+
+#if NFSMW_MOTOR_NATIVO
+  // Motor nativo: estado del limitador de su SDK (rex/audio/output_limiter.h).
+  // Solo lo toca el productor (SubmitFrame).
+  float limitador_ganancia_ = 1.0f;
+  bool sdl_audio_iniciado_ = false;
+#endif
 };
 
 class AndroidAAudioSystem final : public AudioSystem {

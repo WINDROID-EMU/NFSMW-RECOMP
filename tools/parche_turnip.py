@@ -260,6 +260,29 @@ UI_NUEVO = '''    target_link_libraries(rexui PUBLIC android log)
 
 
 # ---------------------------------------------------------------------------
+#  Bloque 5, en el SDK del motor nativo
+#
+#  El SDK de nfsmw-android (tools/android/preparar_nativo.py) tiene su propio
+#  port a Android, sin el de hells-gate, y enlaza rexui con android en PRIVADO.
+#  Mismo cambio, otro anclaje.
+# ---------------------------------------------------------------------------
+
+UI_ANCLA_NATIVO = '''elseif(ANDROID)
+    target_link_libraries(rexui PRIVATE android)
+'''
+
+UI_NUEVO_NATIVO = '''elseif(ANDROID)
+    target_link_libraries(rexui PRIVATE android)
+    # PARCHE LOCAL - Turnip: drivers Vulkan propios via libadrenotools, si
+    # thirdparty/CMakeLists.txt lo ha compilado.
+    if(TARGET adrenotools)
+        target_link_libraries(rexui PUBLIC adrenotools)
+        target_compile_definitions(rexui PRIVATE REX_HAS_ADRENOTOOLS=1)
+    endif()
+'''
+
+
+# ---------------------------------------------------------------------------
 #  Bloque 6: compilar libadrenotools (Android)
 # ---------------------------------------------------------------------------
 
@@ -284,6 +307,11 @@ if(ANDROID AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libadrenotools/CMakeLists.txt
 endif()
 '''
 
+
+# Bloques que en otro arbol del SDK llevan otro anclaje: {nombre: [(ancla, nuevo)]}.
+ALTERNATIVAS = {
+    "enlazar adrenotools": [(UI_ANCLA_NATIVO, UI_NUEVO_NATIVO)],
+}
 
 BLOQUES = [
     ("include/rex/platform/dynlib.h", "DynamicLibrary::Adopt", ADOPT_ANCLA, ADOPT_NUEVO),
@@ -338,6 +366,19 @@ def main():
             if not f.exists():
                 sys.exit(f"[ERROR] No encuentro {f}")
             ficheros[ruta] = [f, *leer(f)]
+
+    # De cada bloque, la variante que vale en ESTE arbol: la que ya esta puesta,
+    # o la unica cuyo anclaje aparece una vez. Si ninguna, la principal (y el
+    # aviso de abajo dira que no entra).
+    elegidos = []
+    for ruta, nombre, ancla, nuevo in BLOQUES:
+        txt = ficheros[ruta][1]
+        variantes = [(ancla, nuevo), *ALTERNATIVAS.get(nombre, [])]
+        puesta = [v for v in variantes if v[1] in txt]
+        cabe = [v for v in variantes if txt.count(v[0]) == 1]
+        a, n = (puesta or cabe or variantes)[0]
+        elegidos.append((ruta, nombre, a, n))
+    BLOQUES[:] = elegidos
 
     if args.estado:
         puestos = sum(1 for r, _, _, nuevo in BLOQUES if nuevo in ficheros[r][1])
