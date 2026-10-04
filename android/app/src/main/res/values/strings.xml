@@ -181,4 +181,6 @@
     <string name="editor_cancelar">CANCEL</string>
     <string name="editor_listo">DONE</string>
     <string name="editor_ayuda">Drag a control to move it. SIZE changes the selected one, or all of them if none is selected.</string>
+    <string name="editor_disposicion_normal">CONTROLS: NORMAL</string>
+    <string name="editor_disposicion_aceleracion">CONTROLS: DRAG</string>
 </resources>

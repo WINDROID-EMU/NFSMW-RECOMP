@@ -251,6 +251,77 @@ ejecutable". En Android esa es `REX_APP_FOLDER`, que `MotorNativo.java` pone en
   iniciado el audio de SDL, por el que va esa pista.
 - **Mando táctil.** El mismo, pero el estado va directo al mando del juego
   (`rex_sdl_set_touch_gamepad_state` de su SDK) en vez de por un mando virtual de SDL.
+- **Editar el mando en la partida.** Un engranaje junto a OCULTAR/TÁCTIL abre el editor de
+  la pantalla de inicio sobre el juego. El juego se para con la misma pausa que al
+  minimizar (`TouchControllerBridge.pausarJuego`): la pausa guarda sus motivos (segundo
+  plano, editor) y no se reanuda hasta que no queda ninguno, así que cerrar el editor con la
+  app minimizada no pone el juego en marcha. CANCELAR rehace los controles desde lo
+  guardado; LISTO guarda con `commit()`, y la pantalla de inicio lo vuelve a leer
+  (`MODE_MULTI_PROCESS`: el juego va en el proceso `:juego`).
+
+  Hay dos disposiciones, la normal y la de las carreras de aceleración, cada una con la suya
+  de fábrica, y el editor elige cuál se edita con su botón CONTROLES; desde la partida abre
+  la de la parte del juego en que se esté. La de fábrica de aceleración sale de una hecha a
+  mano en el móvil (2688×1216), hecha simétrica: abajo, sobre la misma línea, los pedales a
+  la derecha y las flechas de carril a la izquierda, cada flecha en el reflejo de su pedal
+  respecto al centro de la pantalla, con la palanca junto a ellas; los botones en rombo a la
+  derecha; arriba a la izquierda, en rejilla, la clasificación y la cámara en una fila y el
+  retrovisor bajo la cámara; y BACK y START simétricos a los lados de OCULTAR/TÁCTIL y el
+  engranaje (`buildControls`, en fracciones de la pantalla y tamaños en `unit`). Lo que se mueve se guarda aparte (`a_<control>_x`, `_y`, `_s`); RESTAURAR vuelve a
+  la de fábrica de la que se edita. Editándola se ven los pedales, la palanca y los iconos,
+  sin L3 ni R3.
+- **Controles según la parte del juego.** Cada 250 ms, mientras la partida se ve,
+  `TouchControllerView` pregunta al juego dónde está (`TouchControllerBridge.contexto`,
+  `nativo_android.cpp`). En las carreras de aceleración los mismos controles, en el mismo
+  sitio (también el que se haya movido con el editor), cambian de forma: RT es el
+  acelerador y LT el freno (pedales, que tocan en todo lo que ocupan), el stick derecho una
+  palanca de cambios (arriba sube marcha y abajo la baja; va entero o al centro, porque el
+  juego cambia al cruzar su umbral), RB lleva una cámara y LB un retrovisor, el stick
+  izquierdo, que ahí solo cambia de carril, son dos botones cuadrados con flecha (pulsado uno,
+  el eje X va entero a ese lado; los dos, al centro), la cruceta, que ahí solo abre la
+  clasificación (arriba), un botón con el icono de la clasificación que pulsa arriba, y L3
+  y R3 no están. Sin cruceta ni stick vertical, el menú de pausa de una carrera de
+  aceleración no se puede recorrer arriba y abajo (pendiente: detectar la pausa). Al cambiar de contexto se suelta todo, para que ningún dedo se quede pulsando un
+  control que ya no está. En los menús, conduciendo libre y en las demás carreras, los de
+  siempre.
+
+  Se lee de la memoria del juego, con lo que da su
+  [descompilación](https://github.com/dbalatoni13/nfsmw) (versiones de GameCube, 360, PS2 y
+  PC):
+
+  | Qué | Dónde (PAL) |
+  |---|---|
+  | Estado del juego: 3 menús, 1-2 y 4-8 cargas, 6 en el mundo | `TheGameFlowManager.CurrentGameFlowState`, `0x82A39AD8` |
+  | La carrera en curso | `GRaceStatus::fObj`, `0x82A2CB18` → `+0x1A30` `mRaceParms` |
+  | Su tipo (`GRace::Type`: 0 sprint, 1 circuito, **2 aceleración**, 3 eliminación...), si está en la base de datos | `mRaceParms` → `+4` `mIndex` → `+0x2B` |
+  | Si no (carreras rápidas), su atributo `racetype` (clave `0x0F6BCDE1`): un texto, `"drag"` | `mRaceParms` → `+8` → `+4`, la colección de atributos de la carrera |
+  | La tabla con la que el juego pasa ese texto a tipo (`"circuit"` 1, `"p2p"` 0, `"drag"` 2...) | `0x8290D828`, once `{nombre, tipo}` |
+
+  Las carreras rápidas son una copia de la carrera original (`GRaceCustom`) **sin**
+  `mIndex`: el tipo hay que sacarlo como lo saca `GRaceParameters::GetRaceType` cuando le
+  falta, del atributo. La primera versión solo miraba `mIndex`, y en una carrera rápida de
+  aceleración los controles no cambiaron; el diagnóstico lo dejó claro (`idx=00000000`).
+  El atributo se busca como su `Attrib`: en la tabla de la colección, luego en la de su
+  padre (`+0x10`, la carrera original) y, si no, en su parte fija (`+0x18`) con el sitio que
+  da la definición de su clase (`+0x14` → `+8` → `+0xC`). Las tablas tienen nodos de 12
+  bytes (clave, dato, banderas en `+11`) y se recorren nodo a nodo, en vez de copiar su
+  hash; con claves únicas da lo mismo. Se calcula una vez por carrera. Medido en el móvil
+  (USA, dos carreras rápidas de aceleración): `tipo=2 (atributo "drag")`, los controles
+  cambian al empezar la carrera (estado 6) y vuelven al descargarla (estados 7 y 8).
+
+  Los desplazamientos son los del 360, no los de la descompilación (de GameCube: allí
+  `mRaceParms` va en `+0x1AAC`). Salen de las funciones que los usan:
+  `GRaceStatus::GetRaceType` (`sub_820E5E28`), `GRaceParameters::GetRaceType`
+  (`sub_8233A000`) y las de `Attrib` que buscan un atributo (`sub_821485E8`) y su valor
+  (`sub_82145C50`). La app comprueba 17 de sus instrucciones en memoria antes de fiarse de
+  ellos, y que la tabla de nombres tenga `"drag"` = 2. Las siete direcciones van en un array
+  de su app (`parche_nativo.py`), para que `crear_arbol.py` las lleve a la USA y a la
+  japonesa (allí `fObj` se mueve +0x5A0 y la tabla de nombres +0x190) y su comprobación
+  compare esas funciones. Cada lectura mira antes que la página sea legible: Java pregunta
+  mientras el juego cambia de escena. Cada cambio queda en el log (`[contexto]
+  aceleracion`) y, como el APK release no escribe log, en una línea de
+  `files/logs/contexto.txt` con todo lo leído. Con el motor de Xenos no hay contexto y los
+  controles son siempre los de siempre.
 - **Fps.** El rótulo cuenta los fotogramas que presenta el juego
   (`g_nfsmw_fotogramas_juego`).
 

@@ -162,4 +162,6 @@
     <string name="editor_cancelar">CANCELAR</string>
     <string name="editor_listo">PRONTO</string>
     <string name="editor_ayuda">Arraste um controle para movê-lo. TAMANHO muda o selecionado, ou todos se nenhum estiver selecionado.</string>
+    <string name="editor_disposicion_normal">CONTROLES: NORMAIS</string>
+    <string name="editor_disposicion_aceleracion">CONTROLES: ARRANCADA</string>
 </resources>

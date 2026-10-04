@@ -16,6 +16,7 @@ app (..\\nfsmw-android\\app):
     app/src/nfsmw_app.h                     la salida de audio de la app (AAudio)
     app/src/nfsmw_nativo_sistema.cpp        parar el anillo en segundo plano
     app/src/nfsmw_ajustes_graficos.cpp      fps sin limite
+    app/src/nfsmw_recortes_carrera.cpp      las direcciones del contexto del juego
 
 Los demas que necesita ese SDK son los mismos que el nuestro y se aplican tal
 cual con NFSMW_SDK apuntando a el: parche_iso.py, parche_gamertag.py y
@@ -86,6 +87,28 @@ un fotograma que tarda 14 ms espera al vblank siguiente.
 (video_mode_refresh_rate va de 24 a 240): el juego espera como mucho ~4 ms y va
 tan rapido como de el movil. Lo elige la pantalla de inicio (Limite de fps ->
 Sin limite).
+
+
+6. EN QUE PARTE DEL JUEGO SE ESTA
+=================================
+
+Los controles tactiles cambian en las carreras de aceleracion (pedales, palanca
+de cambios). nativo_android.cpp lo lee de la memoria del juego, con lo que da
+la descompilacion del juego (github.com/dbalatoni13/nfsmw):
+
+  TheGameFlowManager.CurrentGameFlowState   3 = menus, 6 = en el mundo
+  GRaceStatus::fObj -> +0x1A30 mRaceParms -> +4 mIndex -> +0x2B el tipo
+                                            (GRace::Type, 2 = aceleracion)
+
+Las carreras rapidas no tienen mIndex: el tipo sale entonces de su atributo
+"racetype" (un texto, "drag"), buscado en sus colecciones de Attrib, y de la
+tabla del juego que pasa ese texto a tipo.
+
+Los desplazamientos son los del 360 (en la de GameCube, mRaceParms va en
++0x1AAC). Las direcciones se ponen en su app, en un array, para que
+crear_arbol.py las lleve a la USA y a la japonesa (en la japonesa fObj se mueve
++0x5A0) y su comprobacion compare las funciones de las que salen los
+desplazamientos.
 """
 
 import argparse
@@ -247,6 +270,35 @@ FPS_VBLANK_NUEVO = '''  // PARCHE LOCAL (NFSMW Recompiled): "sin_limite" pone el
         : limite == "30" || limite == "90" || limite == "120" ? limite.c_str() : "60");
 '''
 
+CONTEXTO_ANCLA = '''namespace nfsmw::recortes_carrera {
+namespace {
+
+constexpr uint32_t kBaseVistas = 0x82A38070;
+'''
+
+CONTEXTO_NUEVO = '''// PARCHE LOCAL (NFSMW Recompiled): las direcciones del juego que lee la app de Android
+// (nativo_android.cpp, nativeContexto) para saber en que parte del juego se esta y cambiar
+// los controles tactiles. Van aqui, en su app, porque crear_arbol.py las traduce a la edicion
+// del juego con todo lo demas, y su comprobacion compara estas funciones en las dos ediciones.
+//   [0] TheGameFlowManager.CurrentGameFlowState: 3 = menus, 6 = en el mundo
+//   [1] GRaceStatus::fObj
+//   [2] GRaceStatus::GetRaceType: lwz r3,0x1A30(r3), el puntero a los parametros de la carrera
+//   [3] GRaceParameters::GetRaceType: el tipo, del indice de la base de datos (mIndex) o, en las
+//       carreras rapidas, que no lo tienen, del atributo "racetype" de la carrera
+//   [4] la tabla de los once nombres de tipo ("circuit", "p2p", "drag"...) y su valor
+//   [5] Attrib: la busqueda de un atributo en una coleccion y en sus padres
+//   [6] Attrib: donde esta el valor de un nodo
+// La app comprueba esas instrucciones antes de fiarse de los desplazamientos.
+extern "C" const uint32_t g_nfsmw_android_contexto[7] = {0x82A39AD8, 0x82A2CB18, 0x820E5E28,
+                                                         0x8233A000, 0x8290D828, 0x821485E8,
+                                                         0x82145C50};
+
+namespace nfsmw::recortes_carrera {
+namespace {
+
+constexpr uint32_t kBaseVistas = 0x82A38070;
+'''
+
 BLOQUES = [
     ("sdk/include/rex/filesystem.h", "declarar SetAndroidContentOpener", CABECERA_ANCLA, CABECERA_NUEVO),
     ("sdk/src/core/filesystem_posix.cpp", "abrir la URI con lo que ponga la app", FUENTE_ANCLA, FUENTE_NUEVO),
@@ -258,6 +310,8 @@ BLOQUES = [
     ("app/src/nfsmw_ajustes_graficos.cpp", "fps sin limite: el valor", FPS_PERMITIDOS_ANCLA, FPS_PERMITIDOS_NUEVO),
     ("app/src/nfsmw_ajustes_graficos.cpp", "fps sin limite: el vblank a 240 Hz", FPS_VBLANK_ANCLA,
      FPS_VBLANK_NUEVO),
+    ("app/src/nfsmw_recortes_carrera.cpp", "direcciones del contexto del juego", CONTEXTO_ANCLA,
+     CONTEXTO_NUEVO),
 ]
 
 
@@ -269,8 +323,14 @@ def leer(f):
 
 
 def escribir(f, txt, eol):
+    # Solo si cambia: reescribir un fichero igual le cambia la fecha, y Ninja
+    # recompila todo lo que lo incluye (filesystem.h, medio SDK).
+    nuevo = txt.replace("\n", eol)
+    with open(f, encoding="utf-8", newline="") as h:
+        if h.read() == nuevo:
+            return
     with open(f, "w", encoding="utf-8", newline="") as h:
-        h.write(txt.replace("\n", eol))
+        h.write(nuevo)
 
 
 def main():

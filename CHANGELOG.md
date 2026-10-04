@@ -42,6 +42,33 @@ proyecto vibe-codeado: ver la sección "This fork" del [README](README.md).
   las funciones que usa la app sea la traducción de la PAL (846, todas bien, en la USA y en
   la japonesa). Cambian tres huellas de shader (resplandor, cielo y composición); la
   biblioteca sale igual que la oficial de nfsmw-nx.
+- Disposición propia para las carreras de aceleración, con la suya de fábrica, simétrica:
+  abajo los pedales a la derecha y las flechas de carril a la izquierda, en espejo y sobre
+  la misma línea, con la palanca junto a las flechas; los botones en rombo a la derecha;
+  arriba a la izquierda la clasificación, la cámara y el retrovisor; y BACK y START junto a
+  OCULTAR/TÁCTIL. El editor del mando elige qué se edita (CONTROLES: NORMALES /
+  ACELERACIÓN), y desde la partida abre la de la parte del juego en que se esté. Lo que se
+  mueve se guarda aparte (`a_<control>` en las preferencias); RESTAURAR vuelve a la de
+  fábrica de la que se edita.
+- Editar el mando táctil desde la partida: un engranaje junto a OCULTAR/TÁCTIL abre el
+  mismo editor que la pantalla de inicio (mover, tamaño, opacidad, restaurar), sobre el
+  juego. Con el motor nativo el juego se queda quieto mientras tanto: la misma pausa que al
+  minimizar, que ahora lleva la cuenta de por qué está en pausa (segundo plano o editor) y
+  solo se reanuda cuando no queda ningún motivo. Lo que se guarda en la partida lo ve
+  también el editor de la pantalla de inicio (`MODE_MULTI_PROCESS`: van en procesos
+  distintos).
+- Controles táctiles según la parte del juego (motor nativo). En las carreras de
+  aceleración RT y LT son pedales (acelerador y freno), el stick derecho una palanca de
+  cambios, RB una cámara y LB un retrovisor, el stick izquierdo, que ahí solo cambia de
+  carril, dos botones cuadrados con flecha que lo llevan entero a cada lado, la cruceta,
+  que ahí solo abre la clasificación, un botón con su icono que pulsa arriba, y L3 y R3
+  desaparecen; en los menús y en el
+  resto, los de siempre. La app lee del juego su estado (`GameFlowManager`) y el tipo de la
+  carrera en curso (`GRaceStatus`): de la base de datos de carreras o, en las carreras
+  rápidas, que son una copia sin esa entrada, de su atributo `racetype`, buscado en sus
+  colecciones de atributos como lo hace el juego. Direcciones de la descompilación del
+  juego, comprobadas en el código del 360 y traducidas a cada edición. Probado en el móvil
+  con carreras rápidas de aceleración (USA).
 - El APK se declara como juego (`android:appCategory="game"` e `isGame`): lo ven así el
   modo de juego y el panel de juegos de Android 12+ y los lanzadores de juegos de los
   fabricantes. Con `res/xml/game_mode_config.xml` el modo de juego no baja la resolución
