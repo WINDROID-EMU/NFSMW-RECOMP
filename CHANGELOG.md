@@ -42,6 +42,14 @@ proyecto vibe-codeado: ver la sección "This fork" del [README](README.md).
   las funciones que usa la app sea la traducción de la PAL (846, todas bien, en la USA y en
   la japonesa). Cambian tres huellas de shader (resplandor, cielo y composición); la
   biblioteca sale igual que la oficial de nfsmw-nx.
+- El APK se declara como juego (`android:appCategory="game"` e `isGame`): lo ven así el
+  modo de juego y el panel de juegos de Android 12+ y los lanzadores de juegos de los
+  fabricantes. Con `res/xml/game_mode_config.xml` el modo de juego no baja la resolución
+  ni limita los fps por su cuenta: para eso están los ajustes de la app.
+- Motor nativo: **Límite de fps → Sin límite** (experimental), y el límite pasa a elegirse
+  en un desplegable. Su motor limita los fps con el ritmo del vblank que cuenta el juego;
+  sin límite, ese vblank va a 240 Hz, el máximo del SDK, y el juego va tan rápido como dé
+  el móvil (`parche_nativo.py`).
 - Escalado a la pantalla con AMD FSR 1.0 o CAS (Gráficos → Escalado a la pantalla), en los
   dos motores: el presentador del SDK ya los traía, con sus shaders precompilados, pero
   solo los activaba descargando el FidelityFX SDK de escritorio.

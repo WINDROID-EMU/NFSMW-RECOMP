@@ -9,9 +9,10 @@
     <string name="edicion_apk">Este APK se compiló para la edición %1$s del juego.</string>
     <string name="motor_nativo">Renderizador nativo.</string>
     <string name="limite_fps">Límite de fps</string>
-    <string name="limite_fps_resumen">El tope del juego. 90 y 120 piden una pantalla así de rápida y son experimentales.</string>
+    <string name="limite_fps_resumen">El tope del juego. 90, 120 y Sin límite son experimentales y piden una pantalla así de rápida. Sin límite, el juego va tan rápido como pueda el móvil (hasta 240 fps).</string>
     <string name="fps_valor">%1$d fps</string>
     <string name="fps_experimental">%1$d fps (experimental)</string>
+    <string name="fps_sin_limite">Sin límite (experimental)</string>
     <string name="resolucion_interna">Resolución de render</string>
     <string name="resolucion_interna_resumen">A la que dibuja el juego, antes de llevarlo a la pantalla. 1280×720 es la de la Xbox 360.</string>
     <string name="res_interna_576">1024×576 · más rápida</string>

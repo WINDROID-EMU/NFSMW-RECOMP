@@ -185,7 +185,8 @@ final class MotorNativo {
 
         // Graficos y sonido
         a.add("--nfsmw_resolucion_interna=" + ajustes.resolucionInterna());
-        a.add("--nfsmw_limite_fps=" + ajustes.limiteFps());
+        a.add("--nfsmw_limite_fps=" + (ajustes.limiteFps() == Ajustes.FPS_SIN_LIMITE
+                ? "sin_limite" : String.valueOf(ajustes.limiteFps())));
         // MSAA no hay: la escena se pinta en una pasada. Solo FXAA.
         a.add("--nfsmw_antialiasing="
                 + (Ajustes.AA_FXAA.equals(ajustes.antialiasing()) ? "fxaa" : "apagado"));

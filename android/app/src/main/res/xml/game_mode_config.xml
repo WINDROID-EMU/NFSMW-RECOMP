@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Modo de juego de Android 12+ (AndroidManifest.xml, android.game_mode_config).
+     Sin esto, en los modos de rendimiento y de bateria el sistema puede bajar la
+     resolucion de la superficie y limitar los fps por su cuenta. La app ya tiene
+     sus ajustes para las dos cosas: aqui se le dice que no las toque. -->
+<game-mode-config xmlns:android="http://schemas.android.com/apk/res/android"
+    android:allowGameDownscaling="false"
+    android:allowGameFpsOverride="false" />

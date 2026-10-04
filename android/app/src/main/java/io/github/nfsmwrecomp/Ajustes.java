@@ -241,7 +241,9 @@ final class Ajustes {
     /**
      * Motor nativo: tope de fps del juego (nfsmw_limite_fps: 30, 60, 90 o 120).
      * Con 90 y 120 el juego cuenta sus vblank a ese ritmo; es experimental.
+     * FPS_SIN_LIMITE: el vblank a 240 Hz, el maximo del SDK (parche_nativo.py).
      */
+    static final int FPS_SIN_LIMITE = 0;
     int limiteFps() { return p.getInt("limite_fps", 60); }
     void limiteFps(int v) { p.edit().putInt("limite_fps", v).apply(); }
 

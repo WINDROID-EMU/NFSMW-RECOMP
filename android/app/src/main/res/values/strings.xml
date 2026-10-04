@@ -16,9 +16,10 @@
     <string name="edicion_apk">This APK was built for the %1$s edition of the game.</string>
     <string name="motor_nativo">Native renderer.</string>
     <string name="limite_fps">Frame rate limit</string>
-    <string name="limite_fps_resumen">The top speed of the game. 90 and 120 need a screen that fast and are experimental.</string>
+    <string name="limite_fps_resumen">The top speed of the game. 90, 120 and Unlimited are experimental and need a screen that fast. Unlimited lets the game run as fast as the phone can (up to 240 fps).</string>
     <string name="fps_valor">%1$d fps</string>
     <string name="fps_experimental">%1$d fps (experimental)</string>
+    <string name="fps_sin_limite">Unlimited (experimental)</string>
     <string name="resolucion_interna">Render resolution</string>
     <string name="resolucion_interna_resumen">The size the game is drawn at, before it goes to the screen. 1280×720 is the Xbox 360 one.</string>
     <string name="res_interna_576">1024×576 · faster</string>

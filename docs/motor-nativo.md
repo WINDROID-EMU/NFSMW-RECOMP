@@ -189,7 +189,7 @@ ejecutable". En Android esa es `REX_APP_FOLDER`, que `MotorNativo.java` pone en
   |---|---|
   | Resolución y Estirar | igual que antes: el búfer y el tamaño de la vista los pone `GameActivity`, y el presentador llena el búfer |
   | Resolución de render (nuevo) | `nfsmw_resolucion_interna`: 1024×576, 1280×720 o 1920×1080 |
-  | Límite de fps (nuevo) | `nfsmw_limite_fps`: 30, 60, 90 o 120 |
+  | Límite de fps (nuevo, desplegable) | `nfsmw_limite_fps`: 30, 60, 90, 120 o `sin_limite` |
   | Suavizado | `nfsmw_antialiasing` = `fxaa` o `apagado`. MSAA no hay: la escena va en una pasada |
   | Filtro anisótropo | `nfsmw_nativo_anisotropico`: 0, 2, 4 o 16 |
   | Sombras, distancia de sombras (nuevos) | `nfsmw_sombras_cada` (1 o 2) y `nfsmw_sombras_corte` (100, 150 o 200) |
@@ -233,6 +233,13 @@ ejecutable". En Android esa es `REX_APP_FOLDER`, que `MotorNativo.java` pone en
   265 ficheros. Vale para los dos motores.
 - **Orientación.** La partida va siempre apaisada (`setOrientationBis`: SDL pedía la
   orientación según el tamaño de su ventana); la pantalla de inicio gira libre.
+- **Fps sin límite.** Su motor no limita los fps por su cuenta: su hilo de vblank dispara
+  la interrupción del juego `nfsmw_limite_fps` veces por segundo, y el juego espera a un
+  vblank para presentar. Así que el límite es el ritmo del vblank, y además redondea hacia
+  arriba: a 120 Hz, un fotograma de 14 ms espera a 16,7. `sin_limite` (`parche_nativo.py`)
+  pone el vblank a 240 Hz, el máximo que admite el SDK (`video_mode_refresh_rate` va de 24
+  a 240): el juego espera como mucho ~4 ms y va tan rápido como dé el móvil. Es
+  experimental, como 90 y 120: no se ha medido en el móvil.
 - **Audio.** Su salida es su driver de SDL (una "bomba" que pide audio cada 5,33 ms con 64
   ms de reserva). Por defecto se cambia por **nuestro driver AAudio**
   (`audio/aaudio_driver.cpp`), el que arregló los cortes con el motor de Xenos: su

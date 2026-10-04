@@ -7,7 +7,7 @@ Motor nativo: lo que nuestra app de Android necesita del SDK de nfsmw-android.
     python tools/android/parche_nativo.py --revertir
     python tools/android/parche_nativo.py --arbol D:\\otra\\ruta\\nfsmw-android
 
-Toca tres ficheros del SDK del motor nativo (..\\nfsmw-android\\sdk) y dos de su
+Toca tres ficheros del SDK del motor nativo (..\\nfsmw-android\\sdk) y tres de su
 app (..\\nfsmw-android\\app):
 
     sdk/include/rex/filesystem.h            SetAndroidContentOpener
@@ -15,6 +15,7 @@ app (..\\nfsmw-android\\app):
     sdk/src/ui/windowed_app_main_sdl.cpp    la sonda de Vulkan, antes del juego
     app/src/nfsmw_app.h                     la salida de audio de la app (AAudio)
     app/src/nfsmw_nativo_sistema.cpp        parar el anillo en segundo plano
+    app/src/nfsmw_ajustes_graficos.cpp      fps sin limite
 
 Los demas que necesita ese SDK son los mismos que el nuestro y se aplican tal
 cual con NFSMW_SDK apuntando a el: parche_iso.py, parche_gamertag.py y
@@ -71,6 +72,20 @@ en el siguiente cambio de fotograma (PM4_XE_SWAP), antes de presentarlo, y el
 juego se queda esperando sitio en el anillo, como con una GPU lenta. La app
 define NfsmwAndroidPausaEnSwap (nativo_android.cpp), que espera ahi mientras
 la app esta en segundo plano.
+
+
+5. FPS SIN LIMITE
+=================
+
+El motor nativo no limita los fps por su cuenta: su hilo de vblank dispara la
+interrupcion del juego nfsmw_limite_fps veces por segundo (30, 60, 90 o 120), y
+el juego espera a un vblank para presentar. Ese es el tope, y ademas redondea:
+un fotograma que tarda 14 ms espera al vblank siguiente.
+
+"sin_limite" pone el vblank a 240 Hz, el maximo que admite el SDK
+(video_mode_refresh_rate va de 24 a 240): el juego espera como mucho ~4 ms y va
+tan rapido como de el movil. Lo elige la pantalla de inicio (Limite de fps ->
+Sin limite).
 """
 
 import argparse
@@ -213,6 +228,25 @@ PAUSA_SWAP_NUEVO = '''        TrazaSwap();
         AnotarJuegoPorDelante();  // Measurement only
 '''
 
+FPS_PERMITIDOS_ANCLA = '''    .allowed({"60", "30", "90", "120"})
+'''
+
+FPS_PERMITIDOS_NUEVO = '''    // PARCHE LOCAL (NFSMW Recompiled): "sin_limite", el vblank a 240 Hz (ver AplicarModoDeVideo).
+    .allowed({"60", "30", "90", "120", "sin_limite"})
+'''
+
+FPS_VBLANK_ANCLA = '''  Poner("video_mode_refresh_rate",
+        limite == "30" || limite == "90" || limite == "120" ? limite.c_str() : "60");
+'''
+
+FPS_VBLANK_NUEVO = '''  // PARCHE LOCAL (NFSMW Recompiled): "sin_limite" pone el vblank a 240 Hz, el maximo del SDK
+  // (video_mode_refresh_rate va de 24 a 240). El juego espera como mucho ~4 ms a un vblank y el
+  // tope pasa a ser lo que de el movil.
+  Poner("video_mode_refresh_rate",
+        limite == "sin_limite" ? "240"
+        : limite == "30" || limite == "90" || limite == "120" ? limite.c_str() : "60");
+'''
+
 BLOQUES = [
     ("sdk/include/rex/filesystem.h", "declarar SetAndroidContentOpener", CABECERA_ANCLA, CABECERA_NUEVO),
     ("sdk/src/core/filesystem_posix.cpp", "abrir la URI con lo que ponga la app", FUENTE_ANCLA, FUENTE_NUEVO),
@@ -221,6 +255,9 @@ BLOQUES = [
     ("app/src/nfsmw_app.h", "la salida de audio de la app", AUDIO_ANCLA, AUDIO_NUEVO),
     ("app/src/nfsmw_nativo_sistema.cpp", "declarar la pausa del anillo", PAUSA_DECL_ANCLA, PAUSA_DECL_NUEVO),
     ("app/src/nfsmw_nativo_sistema.cpp", "parar el anillo en el Swap", PAUSA_SWAP_ANCLA, PAUSA_SWAP_NUEVO),
+    ("app/src/nfsmw_ajustes_graficos.cpp", "fps sin limite: el valor", FPS_PERMITIDOS_ANCLA, FPS_PERMITIDOS_NUEVO),
+    ("app/src/nfsmw_ajustes_graficos.cpp", "fps sin limite: el vblank a 240 Hz", FPS_VBLANK_ANCLA,
+     FPS_VBLANK_NUEVO),
 ]
 
 
