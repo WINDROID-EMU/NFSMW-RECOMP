@@ -156,6 +156,11 @@
     <string name="seccion_tactil">Controles de toque</string>
     <string name="editar_tactil">Editar controles de toque</string>
     <string name="editar_tactil_resumen">Mova os botões de toque e mude o tamanho e a opacidade.</string>
+    <string name="girar_inclinando">Virar inclinando o celular</string>
+    <string name="girar_inclinando_resumen">Nas corridas e dirigindo livre, incline o celular como um volante em vez de usar o analógico esquerdo, que fica oculto. Nas de arrancada continuam as setas de faixa.</string>
+    <string name="sensibilidad_giro">Sensibilidade do volante</string>
+    <string name="sensibilidad_giro_resumen">Mais à direita, menos é preciso inclinar o celular para virar tudo.</string>
+    <string name="sensibilidad_valor">%1$d · vira tudo a %2$d°</string>
     <string name="editor_tamano">TAMANHO</string>
     <string name="editor_opacidad">OPACIDADE</string>
     <string name="editor_restaurar">RESTAURAR</string>
@@ -164,4 +169,5 @@
     <string name="editor_ayuda">Arraste um controle para movê-lo. TAMANHO muda o selecionado, ou todos se nenhum estiver selecionado.</string>
     <string name="editor_disposicion_normal">CONTROLES: NORMAIS</string>
     <string name="editor_disposicion_aceleracion">CONTROLES: ARRANCADA</string>
+    <string name="editor_disposicion_conduciendo">CONTROLES: DIRIGINDO</string>
 </resources>

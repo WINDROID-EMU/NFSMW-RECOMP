@@ -30,6 +30,8 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.radiobutton.MaterialRadioButton;
+import com.google.android.material.slider.LabelFormatter;
+import com.google.android.material.slider.Slider;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -252,7 +254,13 @@ public class SetupActivity extends AppCompatActivity {
             seccion(R.string.seccion_tactil),
             resumen(R.string.editar_tactil_resumen),
             espacio(8),
-            editarTactil
+            editarTactil,
+            interruptor(R.string.girar_inclinando, R.string.girar_inclinando_resumen,
+                    ajustes.girarInclinando(), ajustes::girarInclinando),
+            deslizador(R.string.sensibilidad_giro, R.string.sensibilidad_giro_resumen,
+                    Ajustes.SENSIBILIDAD_MIN, Ajustes.SENSIBILIDAD_MAX, ajustes.sensibilidadGiro(),
+                    s -> getString(R.string.sensibilidad_valor, s, Math.round(Ajustes.anguloGiro(s))),
+                    ajustes::sensibilidadGiro)
         ));
 
         // --- Perfil de Xbox 360
@@ -594,6 +602,41 @@ public class SetupActivity extends AppCompatActivity {
         t.setTextColor(Color.WHITE);
         t.setPadding(0, dp(12), 0, 0);
         return t;
+    }
+
+    /**
+     * Un deslizador de enteros, con su valor escrito debajo del titulo
+     * mientras se mueve. Se guarda en cada paso.
+     */
+    private View deslizador(int titulo, int resumen, int min, int max, int actual,
+                            java.util.function.IntFunction<String> texto, Consumer<Integer> guardar) {
+        LinearLayout caja = new LinearLayout(this);
+        caja.setOrientation(LinearLayout.VERTICAL);
+        caja.setPadding(0, dp(6), 0, dp(6));
+        caja.addView(titulo(titulo));
+        TextView valor = resumen(0);
+        valor.setTextColor(Color.WHITE);
+        valor.setText(texto.apply(actual));
+        caja.addView(valor);
+        Slider s = new Slider(this);
+        s.setValueFrom(min);
+        s.setValueTo(max);
+        s.setStepSize(1);
+        s.setValue(Math.max(min, Math.min(max, actual)));
+        s.setLabelBehavior(LabelFormatter.LABEL_GONE);
+        s.setThumbTintList(ColorStateList.valueOf(Color.WHITE));
+        s.setTrackActiveTintList(ColorStateList.valueOf(ACENTO));
+        s.setTrackInactiveTintList(ColorStateList.valueOf(0xFF303030));
+        s.setHaloTintList(ColorStateList.valueOf(0x336F7432));
+        s.addOnChangeListener((slider, v, delUsuario) -> {
+            int n = Math.round(v);
+            valor.setText(texto.apply(n));
+            if (delUsuario) guardar.accept(n);
+        });
+        caja.addView(s, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (resumen != 0) caja.addView(resumen(resumen));
+        return caja;
     }
 
     private TextView resumen(int texto) {

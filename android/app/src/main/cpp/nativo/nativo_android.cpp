@@ -468,7 +468,7 @@ Java_io_github_nfsmwrecomp_GameActivity_nativeMsPorFotograma(JNIEnv*, jclass) {
 
 // Su app (nfsmw_recortes_carrera.cpp, con parche_nativo.py). Debil: sin el
 // parche, el contexto es desconocido y los controles son los de siempre.
-extern "C" const uint32_t g_nfsmw_android_contexto[7] __attribute__((weak));
+extern "C" const uint32_t g_nfsmw_android_contexto[9] __attribute__((weak));
 
 namespace {
 
@@ -477,6 +477,7 @@ constexpr jint kContextoDesconocido = -1;
 constexpr jint kContextoMenus = 0;       // menus y pantallas de carga
 constexpr jint kContextoMundo = 1;       // conduciendo: libre o en otra carrera
 constexpr jint kContextoAceleracion = 2; // carrera de aceleracion
+constexpr jint kContextoPausa = 3;       // en el mundo, con el juego en pausa (su menu, un mensaje...)
 
 // Los indices de g_nfsmw_android_contexto.
 enum Direccion {
@@ -487,6 +488,8 @@ enum Direccion {
   kNombresDeTipo = 4,    // {const char* nombre, int tipo}[11]
   kBuscarAtributo = 5,   // Attrib: buscar en la coleccion y en sus padres
   kDatoDeNodo = 6,       // Attrib: el valor de un nodo
+  kPausas = 7,           // FEManager::mPauseRequest
+  kPedirPausa = 8,       // FEManager::RequestPauseSimulation
 };
 
 constexpr uint32_t kEstadoEnElMundo = 6;     // GAMEFLOW_STATE_RACING
@@ -705,6 +708,7 @@ int TipoPorNombre(rex::memory::Memory* memoria, const uint32_t* direcciones, con
 // Lo que se ha leido, para el diagnostico.
 struct Lectura {
   uint32_t estado = 0;
+  uint32_t pausas = 0;
   uint32_t carrera = 0;
   uint32_t parametros = 0;
   uint32_t indice = 0;
@@ -758,6 +762,21 @@ bool InstruccionesBien(rex::memory::Memory* memoria, const uint32_t* direcciones
         break;
       }
     }
+    // FEManager::RequestPauseSimulation empieza con lis r10,ALTA y en +0xC lee
+    // el contador, lwz r11,BAJA(r10): que sea el de la tabla. No vale comparar
+    // palabras fijas, porque en la japonesa .data se mueve y la parte baja cambia.
+    if (g_instrucciones_bien) {
+      uint32_t lis = 0, lwz = 0;
+      const uint32_t f = direcciones[kPedirPausa];
+      const bool forma = Leer32(memoria, f, &lis) && Leer32(memoria, f + 0xC, &lwz) &&
+                         (lis & 0xFFFF0000) == 0x3D400000 && (lwz & 0xFFFF0000) == 0x816A0000;
+      const uint32_t calculada = (lis << 16) + uint32_t(int32_t(int16_t(lwz & 0xFFFF)));
+      if (!forma || calculada != direcciones[kPausas]) {
+        REXLOG_WARN("[contexto] la pausa del juego no esta en {:08X} ({:08X} {:08X}): sin controles por contexto",
+                    direcciones[kPausas], lis, lwz);
+        g_instrucciones_bien = 0;
+      }
+    }
     // Y la tabla de nombres tiene "drag" con su tipo.
     if (g_instrucciones_bien && TipoPorNombre(memoria, direcciones, "drag") != kTipoAceleracion) {
       REXLOG_WARN("[contexto] la tabla de tipos de carrera no tiene \"drag\": sin controles por contexto");
@@ -785,6 +804,11 @@ jint LeerContexto(Lectura& l) {
   }
   if (l.estado != kEstadoEnElMundo) {
     return kContextoMenus;
+  }
+  // En pausa (su menu, un mensaje del movil del juego...): los controles de los
+  // menus, sin girar inclinando. Un numero raro es que no es eso: se ignora.
+  if (Leer32(memoria, direcciones[kPausas], &l.pausas) && l.pausas > 0 && l.pausas <= 8) {
+    return kContextoPausa;
   }
   // En el mundo. Sin carrera (o sin poder leerla), conduciendo libre.
   if (!Leer32(memoria, direcciones[kCarrera], &l.carrera) ||
@@ -818,7 +842,7 @@ extern "C" JNIEXPORT jint JNICALL Java_io_github_nfsmwrecomp_TouchControllerBrid
   Lectura l;
   const jint contexto = LeerContexto(l);
   if (contexto != g_ultimo_contexto) {
-    static constexpr const char* kNombres[] = {"desconocido", "menus", "conduciendo", "aceleracion"};
+    static constexpr const char* kNombres[] = {"desconocido", "menus", "conduciendo", "aceleracion", "pausa"};
     REXLOG_INFO("[contexto] {} (estado {}, tipo {} por {})", kNombres[contexto + 1], l.estado, l.tipo,
                 l.via);
     g_ultimo_contexto = contexto;
@@ -835,8 +859,8 @@ Java_io_github_nfsmwrecomp_TouchControllerBridge_contextoDiagnostico(JNIEnv* env
   const jint contexto = LeerContexto(l);
   char linea[256];
   std::snprintf(linea, sizeof(linea),
-                "contexto=%d instr=%d estado=%u fObj=%08X parms=%08X idx=%08X col=%08X tipo=%d (%s \"%s\")",
-                int(contexto), g_instrucciones_bien, l.estado, l.carrera, l.parametros, l.indice,
+                "contexto=%d instr=%d estado=%u pausas=%u fObj=%08X parms=%08X idx=%08X col=%08X tipo=%d (%s \"%s\")",
+                int(contexto), g_instrucciones_bien, l.estado, l.pausas, l.carrera, l.parametros, l.indice,
                 l.coleccion, l.tipo, l.via, l.nombre);
   return env->NewStringUTF(linea);
 }

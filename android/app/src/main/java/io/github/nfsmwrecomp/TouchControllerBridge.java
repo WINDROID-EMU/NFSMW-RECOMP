@@ -10,6 +10,8 @@ final class TouchControllerBridge {
     static final int CONTEXTO_MENUS = 0;
     static final int CONTEXTO_CONDUCIENDO = 1;
     static final int CONTEXTO_ACELERACION = 2;
+    // En el mundo, con el juego en pausa (su menu, un mensaje...).
+    static final int CONTEXTO_PAUSA = 3;
 
     private TouchControllerBridge() {}
 

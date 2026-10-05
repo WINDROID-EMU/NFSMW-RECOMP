@@ -175,6 +175,11 @@
     <string name="seccion_tactil">Touch controls</string>
     <string name="editar_tactil">Edit touch controls</string>
     <string name="editar_tactil_resumen">Move the touch buttons and change their size and opacity.</string>
+    <string name="girar_inclinando">Steer by tilting the phone</string>
+    <string name="girar_inclinando_resumen">In races and free roam, tilt the phone like a steering wheel instead of using the left stick, which is hidden. Drag races keep the lane arrows.</string>
+    <string name="sensibilidad_giro">Steering sensitivity</string>
+    <string name="sensibilidad_giro_resumen">Further right, less tilt is needed to steer all the way.</string>
+    <string name="sensibilidad_valor">%1$d · full lock at %2$d°</string>
     <string name="editor_tamano">SIZE</string>
     <string name="editor_opacidad">OPACITY</string>
     <string name="editor_restaurar">RESET</string>
@@ -183,4 +188,5 @@
     <string name="editor_ayuda">Drag a control to move it. SIZE changes the selected one, or all of them if none is selected.</string>
     <string name="editor_disposicion_normal">CONTROLS: NORMAL</string>
     <string name="editor_disposicion_aceleracion">CONTROLS: DRAG</string>
+    <string name="editor_disposicion_conduciendo">CONTROLS: DRIVING</string>
 </resources>

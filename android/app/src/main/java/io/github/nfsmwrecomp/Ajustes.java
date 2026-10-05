@@ -26,6 +26,29 @@ final class Ajustes {
         p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
+    /**
+     * Mando tactil: girar inclinando el movil, como un volante, en vez de con
+     * el stick izquierdo (en la disposicion de conducir), y con que
+     * sensibilidad: de SENSIBILIDAD_MIN a SENSIBILIDAD_MAX.
+     */
+    boolean girarInclinando() { return p.getBoolean("girar_inclinando", false); }
+    void girarInclinando(boolean v) { p.edit().putBoolean("girar_inclinando", v).apply(); }
+    static final int SENSIBILIDAD_MIN = 1;
+    static final int SENSIBILIDAD_MAX = 20;
+    int sensibilidadGiro() { return p.getInt("sensibilidad_giro", 10); }
+    void sensibilidadGiro(int v) { p.edit().putInt("sensibilidad_giro", v).apply(); }
+
+    /**
+     * Los grados que hay que inclinar el movil para girar del todo con esa
+     * sensibilidad: de 45 (1) a 6 (20), cada paso un ~10 % menos, para que
+     * cada uno se note igual en toda la escala. Con 10, unos 17.
+     */
+    static float anguloGiro(int sensibilidad) {
+        int s = Math.max(SENSIBILIDAD_MIN, Math.min(SENSIBILIDAD_MAX, sensibilidad));
+        return (float) (45.0 * Math.pow(6.0 / 45.0, (s - SENSIBILIDAD_MIN)
+                / (double) (SENSIBILIDAD_MAX - SENSIBILIDAD_MIN)));
+    }
+
     String iso() { return p.getString("iso", null); }
     void iso(String uri) { p.edit().putString("iso", uri).apply(); }
 

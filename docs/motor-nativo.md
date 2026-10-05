@@ -251,6 +251,16 @@ ejecutable". En Android esa es `REX_APP_FOLDER`, que `MotorNativo.java` pone en
   iniciado el audio de SDL, por el que va esa pista.
 - **Mando táctil.** El mismo, pero el estado va directo al mando del juego
   (`rex_sdl_set_touch_gamepad_state` de su SDK) en vez de por un mando virtual de SDL.
+- **Girar inclinando el móvil.** Opción de la pantalla de inicio (Controles táctiles). En la
+  disposición de conducir, `TouchControllerView` lee el sensor de gravedad
+  (`TYPE_GRAVITY`; si no hay, el acelerómetro con un filtro de paso bajo) a `SENSOR_DELAY_GAME`
+  mientras la partida se ve. Pasa el vector a la pantalla según su rotación (en horizontal, la X
+  de lo que se ve es la Y del móvil, con el signo según el lado) y usa su componente lateral:
+  `x / (g · sen(ángulo))` (signo comprobado en el móvil), con el ángulo de giro completo
+  según la sensibilidad (deslizador de 1 a 20: de 45 a 6 grados, cada paso un ~10 % menos;
+  `Ajustes.anguloGiro`) y una zona muerta del 3 %. Como solo mira la componente lateral, vale con el móvil vertical o
+  recostado. Ese valor es el eje X del stick izquierdo, que no se ve. En aceleración siguen las
+  flechas de carril; en los menús y editando, nada.
 - **Editar el mando en la partida.** Un engranaje junto a OCULTAR/TÁCTIL abre el editor de
   la pantalla de inicio sobre el juego. El juego se para con la misma pausa que al
   minimizar (`TouchControllerBridge.pausarJuego`): la pausa guarda sus motivos (segundo
@@ -259,9 +269,12 @@ ejecutable". En Android esa es `REX_APP_FOLDER`, que `MotorNativo.java` pone en
   guardado; LISTO guarda con `commit()`, y la pantalla de inicio lo vuelve a leer
   (`MODE_MULTI_PROCESS`: el juego va en el proceso `:juego`).
 
-  Hay dos disposiciones, la normal y la de las carreras de aceleración, cada una con la suya
-  de fábrica, y el editor elige cuál se edita con su botón CONTROLES; desde la partida abre
-  la de la parte del juego en que se esté. La de fábrica de aceleración sale de una hecha a
+  Hay tres disposiciones, cada una con la suya de fábrica: la normal (menús y cargas), la de
+  conducir (el resto de carreras, la conducción libre y las persecuciones: lo de aceleración
+  pero con el stick izquierdo para girar y la cruceta, el stick en el reflejo de los pedales y
+  la cruceta en el de los botones en rombo) y la de las carreras de aceleración. El editor
+  elige cuál se edita con su botón CONTROLES; desde la partida abre la de la parte del juego
+  en que se esté. La de fábrica de aceleración sale de una hecha a
   mano en el móvil (2688×1216), hecha simétrica: abajo, sobre la misma línea, los pedales a
   la derecha y las flechas de carril a la izquierda, cada flecha en el reflejo de su pedal
   respecto al centro de la pantalla, con la palanca junto a ellas; los botones en rombo a la
@@ -296,6 +309,7 @@ ejecutable". En Android esa es `REX_APP_FOLDER`, que `MotorNativo.java` pone en
   | Su tipo (`GRace::Type`: 0 sprint, 1 circuito, **2 aceleración**, 3 eliminación...), si está en la base de datos | `mRaceParms` → `+4` `mIndex` → `+0x2B` |
   | Si no (carreras rápidas), su atributo `racetype` (clave `0x0F6BCDE1`): un texto, `"drag"` | `mRaceParms` → `+8` → `+4`, la colección de atributos de la carrera |
   | La tabla con la que el juego pasa ese texto a tipo (`"circuit"` 1, `"p2p"` 0, `"drag"` 2...) | `0x8290D828`, once `{nombre, tipo}` |
+  | En pausa (menú de pausa, mensajes...): cuántas peticiones hay | `FEManager::mPauseRequest`, `0x82A2C5CC` (`RequestPauseSimulation`, `sub_82285B80`, hace `mPauseReason[mPauseRequest++] = motivo`) |
 
   Las carreras rápidas son una copia de la carrera original (`GRaceCustom`) **sin**
   `mIndex`: el tipo hay que sacarlo como lo saca `GRaceParameters::GetRaceType` cuando le
@@ -317,7 +331,12 @@ ejecutable". En Android esa es `REX_APP_FOLDER`, que `MotorNativo.java` pone en
   ellos, y que la tabla de nombres tenga `"drag"` = 2. Las siete direcciones van en un array
   de su app (`parche_nativo.py`), para que `crear_arbol.py` las lleve a la USA y a la
   japonesa (allí `fObj` se mueve +0x5A0 y la tabla de nombres +0x190) y su comprobación
-  compare esas funciones. Cada lectura mira antes que la página sea legible: Java pregunta
+  compare esas funciones. En pausa no se gira inclinando el móvil (movería las opciones del
+  menú) y la disposición es la de conducir, que tiene la cruceta; también al pausar una
+  carrera de aceleración, cuya disposición no la tiene. La dirección del contador de pausas no
+  se comprueba con una palabra fija, porque en la japonesa `.data` se mueve: se rehace del `lis`
+  + `lwz` de `RequestPauseSimulation` y tiene que coincidir con la traducida. Cada lectura mira
+  antes que la página sea legible: Java pregunta
   mientras el juego cambia de escena. Cada cambio queda en el log (`[contexto]
   aceleracion`) y, como el APK release no escribe log, en una línea de
   `files/logs/contexto.txt` con todo lo leído. Con el motor de Xenos no hay contexto y los

@@ -42,6 +42,23 @@ proyecto vibe-codeado: ver la sección "This fork" del [README](README.md).
   las funciones que usa la app sea la traducción de la PAL (846, todas bien, en la USA y en
   la japonesa). Cambian tres huellas de shader (resplandor, cielo y composición); la
   biblioteca sale igual que la oficial de nfsmw-nx.
+- En pausa (el menú de pausa, un mensaje...) no se gira inclinando el móvil: movía las
+  opciones del menú. Se quedan los controles de conducir, que tienen la cruceta; también
+  al pausar una carrera de aceleración, cuyo menú de pausa no se podía recorrer. La app lee el contador de pausas del juego
+  (`FEManager::mPauseRequest`, el de `RequestPauseSimulation`).
+- Girar inclinando el móvil (Controles táctiles → Girar inclinando el móvil): en la
+  disposición de conducir, el eje X del stick izquierdo sale del sensor de gravedad
+  (acelerómetro y giroscopio; sin él, el acelerómetro filtrado), como un volante, y el
+  stick no se ve. La sensibilidad, en un deslizador de 1 a 20: gira del todo de 45 a 6
+  grados de inclinación, cada paso un ~10 % menos (con 10, 17 grados), con una zona muerta
+  del 3 % para el pulso. Tiene en cuenta hacia qué lado está apaisado el móvil. En aceleración siguen las flechas
+  de carril.
+- Controles de conducir en el resto de carreras, en la conducción libre y en las
+  persecuciones: los de aceleración (pedales, palanca de cambios, cámara y retrovisor, sin
+  L3 ni R3), pero con el stick izquierdo para girar y la cruceta, que ahí hace más que abrir
+  la clasificación. Su disposición de fábrica: el stick en el reflejo de los pedales y la
+  cruceta en el de los botones en rombo. El editor tiene ya tres (NORMALES, CONDUCIENDO y
+  ACELERACIÓN).
 - Disposición propia para las carreras de aceleración, con la suya de fábrica, simétrica:
   abajo los pedales a la derecha y las flechas de carril a la izquierda, en espejo y sobre
   la misma línea, con la palanca junto a las flechas; los botones en rombo a la derecha;

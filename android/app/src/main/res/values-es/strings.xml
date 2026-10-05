@@ -156,6 +156,11 @@
     <string name="seccion_tactil">Controles táctiles</string>
     <string name="editar_tactil">Editar controles táctiles</string>
     <string name="editar_tactil_resumen">Mueve los botones táctiles y cambia su tamaño y su opacidad.</string>
+    <string name="girar_inclinando">Girar inclinando el móvil</string>
+    <string name="girar_inclinando_resumen">En las carreras y conduciendo libre, inclina el móvil como un volante en vez de usar el stick izquierdo, que no se ve. En las de aceleración siguen las flechas de carril.</string>
+    <string name="sensibilidad_giro">Sensibilidad del giro</string>
+    <string name="sensibilidad_giro_resumen">Más a la derecha, menos hay que inclinar el móvil para girar del todo.</string>
+    <string name="sensibilidad_valor">%1$d · gira del todo a %2$d°</string>
     <string name="editor_tamano">TAMAÑO</string>
     <string name="editor_opacidad">OPACIDAD</string>
     <string name="editor_restaurar">RESTAURAR</string>
@@ -164,4 +169,5 @@
     <string name="editor_ayuda">Arrastra un control para moverlo. TAMAÑO cambia el elegido, o todos si no hay ninguno.</string>
     <string name="editor_disposicion_normal">CONTROLES: NORMALES</string>
     <string name="editor_disposicion_aceleracion">CONTROLES: ACELERACIÓN</string>
+    <string name="editor_disposicion_conduciendo">CONTROLES: CONDUCIENDO</string>
 </resources>
