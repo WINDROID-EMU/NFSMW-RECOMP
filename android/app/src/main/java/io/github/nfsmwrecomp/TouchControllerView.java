@@ -1,6 +1,9 @@
 package io.github.nfsmwrecomp;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -12,6 +15,11 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.hardware.input.InputManager;
+import android.hardware.usb.UsbConstants;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbInterface;
+import android.hardware.usb.UsbManager;
+import android.os.Build;
 import android.util.SparseArray;
 import android.view.InputDevice;
 import android.view.Display;
@@ -137,16 +145,29 @@ public final class TouchControllerView extends View {
 
                 @Override
                 public void onInputDeviceRemoved(int deviceId) {
-                    if (mandoFisico && !hayMandoFisico()) salirModoMando();
+                    if (mandoFisico && !hayMandoFisico(null)) salirModoMando();
                 }
 
                 @Override
                 public void onInputDeviceChanged(int deviceId) {
-                    boolean hay = hayMandoFisico();
-                    if (hay && !mandoFisico) entrarModoMando();
-                    else if (!hay && mandoFisico) salirModoMando();
+                    revisarMandos(null);
                 }
             };
+    // Los mandos de Xbox por USB: en la partida se los queda SDL (su driver HIDAPI, que
+    // les da la vibracion) y Android deja de verlos como InputDevice. Se siguen por USB.
+    private final UsbManager usbManager;
+    private final BroadcastReceiver oyenteUsb = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            UsbDevice quitado = null;
+            if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(intent.getAction())) {
+                quitado = Build.VERSION.SDK_INT >= 33
+                        ? intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice.class)
+                        : intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+            }
+            revisarMandos(quitado);
+        }
+    };
     private final RectF toggle = new RectF();
     private float lastWidth;
     private float lastHeight;
@@ -390,12 +411,14 @@ public final class TouchControllerView extends View {
         preferences = context.getSharedPreferences(PREFS, modo);
         opacidad = preferences.getFloat(PREF_OPACIDAD, 1f);
         inputManager = (InputManager) context.getSystemService(Context.INPUT_SERVICE);
+        usbManager = (UsbManager) context.getSystemService(Context.USB_SERVICE);
         if (editando) {
             controlsVisible = true;
             toggleVisible = false;
             return;
         }
-        mandoFisico = hayMandoFisico();
+        mandoFisico = hayMandoFisico(null);
+        if (enPartida) GameActivity.callarVibracion(GameActivity.CALLADA_MANDO, mandoFisico);
         // Con mando, oculto del todo; sin el, como lo dejara el usuario.
         controlsVisible = !mandoFisico && preferences.getBoolean(PREF_VISIBLE, true);
         toggleVisible = !mandoFisico;
@@ -415,6 +438,8 @@ public final class TouchControllerView extends View {
     private void entrarModoMando() {
         if (editando) return;
         mandoFisico = true;
+        // Con mando fisico vibra el (por SDL), no el movil.
+        GameActivity.callarVibracion(GameActivity.CALLADA_MANDO, true);
         removeCallbacks(ocultarToggle);
         toggleVisible = false;
         if (controlsVisible) {
@@ -428,6 +453,7 @@ public final class TouchControllerView extends View {
     private void salirModoMando() {
         if (editando) return;
         mandoFisico = false;
+        GameActivity.callarVibracion(GameActivity.CALLADA_MANDO, false);
         controlsVisible = preferences.getBoolean(PREF_VISIBLE, true);
         rehacer();
         mostrarToggle();
@@ -464,7 +490,17 @@ public final class TouchControllerView extends View {
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         // null: los avisos llegan por el hilo principal, el de la vista.
-        if (enPartida) inputManager.registerInputDeviceListener(oyenteMandos, null);
+        if (enPartida) {
+            inputManager.registerInputDeviceListener(oyenteMandos, null);
+            IntentFilter usb = new IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED);
+            usb.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+            // Avisos del sistema: se registran como lo hace SDL.
+            if (Build.VERSION.SDK_INT >= 33) {
+                getContext().registerReceiver(oyenteUsb, usb, Context.RECEIVER_EXPORTED);
+            } else {
+                getContext().registerReceiver(oyenteUsb, usb);
+            }
+        }
         // Al empezar la partida se ve, y a los TOGGLE_MS se va.
         if (enPartida && toggleVisible) mostrarToggle();
         sendState();
@@ -498,7 +534,10 @@ public final class TouchControllerView extends View {
 
     @Override
     protected void onDetachedFromWindow() {
-        if (enPartida) inputManager.unregisterInputDeviceListener(oyenteMandos);
+        if (enPartida) {
+            inputManager.unregisterInputDeviceListener(oyenteMandos);
+            getContext().unregisterReceiver(oyenteUsb);
+        }
         removeCallbacks(ocultarToggle);
         removeCallbacks(mirarContexto);
         escucharInclinacion(false);
@@ -1068,6 +1107,7 @@ public final class TouchControllerView extends View {
     private void abrirEditor() {
         clearInput();
         TouchControllerBridge.tryPausarJuego(true);
+        GameActivity.callarVibracion(GameActivity.CALLADA_EDITOR, true);
         visiblesAntesDeEditar = controlsVisible;
         removeCallbacks(ocultarToggle);
         toggleVisible = false;
@@ -1097,6 +1137,7 @@ public final class TouchControllerView extends View {
         rehacer();
         mostrarToggle();
         TouchControllerBridge.tryPausarJuego(false);
+        GameActivity.callarVibracion(GameActivity.CALLADA_EDITOR, false);
     }
 
     /**
@@ -1186,9 +1227,39 @@ public final class TouchControllerView extends View {
         return d != null && !d.isVirtual() && esFuenteDeMando(d.getSources());
     }
 
-    private static boolean hayMandoFisico() {
+    /** Hay un mando fisico; quitado: un USB que se acaba de desconectar. */
+    private boolean hayMandoFisico(UsbDevice quitado) {
         for (int deviceId : InputDevice.getDeviceIds()) {
             if (esMando(deviceId)) return true;
+        }
+        if (usbManager != null) {
+            for (UsbDevice d : usbManager.getDeviceList().values()) {
+                if (!d.equals(quitado) && esXboxUsb(d)) return true;
+            }
+        }
+        return false;
+    }
+
+    private void revisarMandos(UsbDevice quitado) {
+        boolean hay = hayMandoFisico(quitado);
+        if (hay && !mandoFisico) entrarModoMando();
+        else if (!hay && mandoFisico) salirModoMando();
+    }
+
+    /**
+     * Un mando de Xbox 360 o One/Series por USB: la interfaz con la que lo reconoce
+     * el driver HIDAPI de SDL (HIDDeviceManager), de clase propia del fabricante.
+     */
+    static boolean esXboxUsb(UsbDevice d) {
+        for (int i = 0; i < d.getInterfaceCount(); i++) {
+            UsbInterface u = d.getInterface(i);
+            if (u.getInterfaceClass() != UsbConstants.USB_CLASS_VENDOR_SPEC) continue;
+            int subclase = u.getInterfaceSubclass();
+            int protocolo = u.getInterfaceProtocol();
+            if ((subclase == 71 && protocolo == 208)
+                    || (subclase == 93 && (protocolo == 1 || protocolo == 129))) {
+                return true;
+            }
         }
         return false;
     }

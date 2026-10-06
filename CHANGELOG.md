@@ -42,6 +42,23 @@ proyecto vibe-codeado: ver la sección "This fork" del [README](README.md).
   las funciones que usa la app sea la traducción de la PAL (846, todas bien, en la USA y en
   la japonesa). Cambian tres huellas de shader (resplandor, cielo y composición); la
   biblioteca sale igual que la oficial de nfsmw-nx.
+- Vuelve la vibración con el motor nativo (Controles táctiles → Vibración, encendida por
+  defecto). Su SDK la trae apagada (`input_vibracion = false`: el juego pide vibrar y a los
+  mandos solo les llega cero), por eso un mando de Xbox Series X por USB no vibraba; la app
+  pasa `--input_vibracion` con el ajuste. Los mandos físicos vibran por SDL
+  (`SDL_RumbleGamepad`), si Android expone sus motores. Por USB, el kernel del RedMagic no
+  se los da (su xpad no trae force feedback: el mando sale sin `VIBRATOR`), así que con la
+  vibración puesta se enciende el driver HIDAPI de Xbox de SDL
+  (`SDL_HINT_JOYSTICK_HIDAPI_XBOX`), que abre los mandos de Xbox 360 y One/Series por USB
+  y les manda la vibración él mismo; al conectarlos Android pide permiso de USB. Probado
+  con un mando de Xbox Series X por USB-C. Por Bluetooth siguen por Android, que ahí sí
+  tiene sus motores. Con el mando táctil vibra el
+  móvil: su driver de SDL no le hacía caso al mando táctil y `parche_nativo.py` le hace
+  llamar a la app (`NfsmwAndroidVibrar` → `GameActivity.vibrarMando`), que lo traduce a 16
+  niveles de fuerza con el vibrador del móvil. Se calla al minimizar, en el editor del
+  mando y mientras haya un mando físico (USB o Bluetooth, conectado o usado en la
+  partida): entonces vibra solo el mando. **Probar vibración** (Controles táctiles) hace
+  vibrar cada mando conectado con su vibrador de Android y dice cuántos motores le da.
 - En pausa (el menú de pausa, un mensaje...) no se gira inclinando el móvil: movía las
   opciones del menú. Se quedan los controles de conducir, que tienen la cruceta; también
   al pausar una carrera de aceleración, cuyo menú de pausa no se podía recorrer. La app lee el contador de pausas del juego

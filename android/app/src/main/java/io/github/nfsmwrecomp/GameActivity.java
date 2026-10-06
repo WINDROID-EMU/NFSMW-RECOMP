@@ -10,6 +10,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.KeyEvent;
@@ -110,6 +113,15 @@ public class GameActivity extends SDLActivity {
             ponerContadorFps();
         }
 
+        vibracion = new Ajustes(this).vibracion();
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            VibratorManager vm = (VibratorManager) getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+            vibrador = vm == null ? null : vm.getDefaultVibrator();
+        } else {
+            vibrador = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        }
+        if (vibrador != null && !vibrador.hasVibrator()) vibrador = null;
+
         touchController = new TouchControllerView(this);
         mLayout.addView(touchController, new ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -136,6 +148,7 @@ public class GameActivity extends SDLActivity {
     @Override
     protected void onPause() {
         if (touchController != null) touchController.clearInput();
+        callarVibracion(CALLADA_SEGUNDO_PLANO, true);
         // En segundo plano no hay nadie mirando el rotulo: no despertar al hilo
         // principal dos veces por segundo para nada.
         reloj.removeCallbacksAndMessages(null);
@@ -145,6 +158,7 @@ public class GameActivity extends SDLActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        callarVibracion(CALLADA_SEGUNDO_PLANO, false);
         if (actualizarFps != null) {
             reloj.removeCallbacks(actualizarFps);
             reloj.post(actualizarFps);
@@ -314,6 +328,50 @@ public class GameActivity extends SDLActivity {
      * firma exacta en la clase de la actividad, para abrir URIs content:// desde
      * codigo nativo. Devuelve null si algo falla.
      */
+    // --- La vibracion del mando tactil (Ajustes.vibracion).
+    private static volatile boolean vibracion;
+    private static Vibrator vibrador;
+    // Lo ultimo que pidio el juego (0..255), lo que esta puesto y por que se
+    // calla (en segundo plano, editando el mando): sin perder lo pedido, para
+    // volver a vibrar al acabar.
+    private static int vibracionPedida;
+    private static int vibracionPuesta;
+    private static int vibracionCallada;
+    static final int CALLADA_SEGUNDO_PLANO = 1;
+    static final int CALLADA_EDITOR = 2;
+    // Hay un mando fisico (USB o Bluetooth): vibra el, no el movil.
+    static final int CALLADA_MANDO = 4;
+
+    /**
+     * El mando tactil vibra: lo pide el juego desde su hilo (nativo_android.cpp),
+     * con una fuerza de 0 a 255; 0 la para. Dura hasta que el juego la cambie,
+     * como en el mando de la Xbox 360.
+     */
+    public static synchronized void vibrarMando(int amplitud) {
+        vibracionPedida = amplitud;
+        aplicarVibracion();
+    }
+
+    /** Calla la vibracion por un motivo (CALLADA_*) mientras dure. */
+    static synchronized void callarVibracion(int motivo, boolean callar) {
+        vibracionCallada = callar ? vibracionCallada | motivo : vibracionCallada & ~motivo;
+        aplicarVibracion();
+    }
+
+    private static void aplicarVibracion() {
+        Vibrator v = vibrador;
+        if (v == null) return;
+        int a = vibracion && vibracionCallada == 0 ? Math.min(255, vibracionPedida) : 0;
+        if (a == vibracionPuesta) return;
+        vibracionPuesta = a;
+        if (a <= 0) {
+            v.cancel();
+        } else {
+            // Una forma de onda que se repite: sigue hasta la siguiente llamada.
+            v.vibrate(VibrationEffect.createWaveform(new long[] {1000}, new int[] {a}, 0));
+        }
+    }
+
     public static ParcelFileDescriptor openContentFd(String uri, String mode) {
         SDLActivity yo = mSingleton;
         if (yo == null || uri == null) {

@@ -156,6 +156,13 @@
     <string name="seccion_tactil">Controles táctiles</string>
     <string name="editar_tactil">Editar controles táctiles</string>
     <string name="editar_tactil_resumen">Mueve los botones táctiles y cambia su tamaño y su opacidad.</string>
+    <string name="vibracion">Vibración</string>
+    <string name="vibracion_resumen">El juego hace vibrar el mando: choques, nitro, terreno... Vibra el mando físico (USB o Bluetooth); si no hay ninguno, el móvil.</string>
+    <string name="probar_vibracion">Probar vibración</string>
+    <string name="vibracion_mando_motores">%1$s (%2$s): vibrando · motores: %3$d</string>
+    <string name="vibracion_mando_sin_motores">%1$s (%2$s): Android no da motores para este mando, así que no puede vibrar.</string>
+    <string name="vibracion_mando_xbox_usb">%1$s (%2$s): por USB, Android no le da motores y esta prueba no puede hacerlo vibrar. En la partida lo maneja SDL directamente por USB, con su vibración (al conectarlo pide permiso de USB).</string>
+    <string name="vibracion_sin_mandos">No hay ningún mando conectado: vibra el móvil.</string>
     <string name="girar_inclinando">Girar inclinando el móvil</string>
     <string name="girar_inclinando_resumen">En las carreras y conduciendo libre, inclina el móvil como un volante en vez de usar el stick izquierdo, que no se ve. En las de aceleración siguen las flechas de carril.</string>
     <string name="sensibilidad_giro">Sensibilidad del giro</string>

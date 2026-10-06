@@ -7,8 +7,14 @@ import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.InputFilter;
@@ -17,6 +23,7 @@ import android.text.TextWatcher;
 import android.text.format.Formatter;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
+import android.view.InputDevice;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -43,6 +50,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
@@ -250,11 +258,24 @@ public class SetupActivity extends AppCompatActivity {
         editarTactil.setText(R.string.editar_tactil);
         estilarBotonSecundario(editarTactil);
         editarTactil.setOnClickListener(v -> startActivity(new Intent(this, EditorTactilActivity.class)));
+        MaterialButton probarVibracion = new MaterialButton(this);
+        probarVibracion.setText(R.string.probar_vibracion);
+        estilarBotonSecundario(probarVibracion);
+        TextView vibracionProbada = resumen(0);
+        vibracionProbada.setVisibility(View.GONE);
+        probarVibracion.setOnClickListener(v -> probarVibracion(vibracionProbada));
+        LinearLayout filaVibracion = new LinearLayout(this);
+        filaVibracion.setOrientation(LinearLayout.VERTICAL);
+        filaVibracion.addView(interruptor(R.string.vibracion, R.string.vibracion_resumen,
+                ajustes.vibracion(), ajustes::vibracion));
+        filaVibracion.addView(probarVibracion);
+        filaVibracion.addView(vibracionProbada);
         col.addView(tarjeta(
             seccion(R.string.seccion_tactil),
             resumen(R.string.editar_tactil_resumen),
             espacio(8),
             editarTactil,
+            soloNativo(filaVibracion),
             interruptor(R.string.girar_inclinando, R.string.girar_inclinando_resumen,
                     ajustes.girarInclinando(), ajustes::girarInclinando),
             deslizador(R.string.sensibilidad_giro, R.string.sensibilidad_giro_resumen,
@@ -637,6 +658,76 @@ public class SetupActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         if (resumen != 0) caja.addView(resumen(resumen));
         return caja;
+    }
+
+    /**
+     * Probar vibracion: cada mando fisico conectado vibra con su vibrador de Android, el
+     * mismo que usa SDL en la partida, y se dice cuantos motores le da Android. Sin
+     * motores ahi, en la partida tampoco puede vibrar. Sin mandos, vibra el movil.
+     */
+    private void probarVibracion(TextView salida) {
+        StringBuilder texto = new StringBuilder();
+        for (int id : InputDevice.getDeviceIds()) {
+            InputDevice d = InputDevice.getDevice(id);
+            if (d == null || d.isVirtual() || !TouchControllerView.esFuenteDeMando(d.getSources())) {
+                continue;
+            }
+            String usb = String.format(Locale.ROOT, "%04X:%04X", d.getVendorId(), d.getProductId());
+            int motores = 0;
+            if (Build.VERSION.SDK_INT >= 31) {
+                VibratorManager vm = d.getVibratorManager();
+                for (int v : vm.getVibratorIds()) {
+                    if (vibrarUnRato(vm.getVibrator(v))) motores++;
+                }
+            } else if (vibrarUnRato(d.getVibrator())) {
+                motores = 1;
+            }
+            if (texto.length() > 0) texto.append('\n');
+            if (motores > 0) {
+                texto.append(getString(R.string.vibracion_mando_motores, d.getName(), usb, motores));
+            } else if (esXboxUsb(d.getVendorId(), d.getProductId())) {
+                texto.append(getString(R.string.vibracion_mando_xbox_usb, d.getName(), usb));
+            } else {
+                texto.append(getString(R.string.vibracion_mando_sin_motores, d.getName(), usb));
+            }
+        }
+        if (texto.length() == 0) {
+            Vibrator movil;
+            if (Build.VERSION.SDK_INT >= 31) {
+                VibratorManager vm = (VibratorManager) getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                movil = vm == null ? null : vm.getDefaultVibrator();
+            } else {
+                movil = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            }
+            vibrarUnRato(movil);
+            texto.append(getString(R.string.vibracion_sin_mandos));
+        }
+        salida.setText(texto);
+        salida.setVisibility(View.VISIBLE);
+    }
+
+    /** Ese mando esta conectado por USB y es de Xbox: en la partida lo abre SDL. */
+    private boolean esXboxUsb(int vendor, int producto) {
+        UsbManager um = (UsbManager) getSystemService(Context.USB_SERVICE);
+        if (um == null) return false;
+        for (UsbDevice u : um.getDeviceList().values()) {
+            if (u.getVendorId() == vendor && u.getProductId() == producto
+                    && TouchControllerView.esXboxUsb(u)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Medio segundo de vibracion; false si ese vibrador no existe. */
+    private static boolean vibrarUnRato(Vibrator v) {
+        if (v == null || !v.hasVibrator()) return false;
+        try {
+            v.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
+        } catch (RuntimeException e) {
+            v.vibrate(500);
+        }
+        return true;
     }
 
     private TextView resumen(int texto) {
