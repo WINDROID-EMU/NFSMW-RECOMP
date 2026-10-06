@@ -17,6 +17,8 @@
 //   7. Parar el juego y el audio mientras la app esta en segundo plano.
 //   8. En que parte del juego se esta (TouchControllerBridge.contexto), para
 //      cambiar los controles tactiles en las carreras de aceleracion.
+//   9. La vibracion del mando tactil: el movil vibra con lo que el juego le
+//      pide al mando (GameActivity.vibrarMando).
 
 #include <jni.h>
 
@@ -32,6 +34,7 @@
 #include <vector>
 
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_system.h>
 
 #include <rex/cvar.h>
@@ -192,6 +195,15 @@ extern "C" int NfsmwSondaSiSePide(int argc, char** argv) {
   std::vector<char*> args;
   args.reserve(static_cast<size_t>(argc));
   for (int i = 0; i < argc; ++i) {
+    // Los mandos de Xbox por USB. El kernel de algunos moviles (su xpad sin
+    // CONFIG_JOYSTICK_XPAD_FF) no le da a Android sus motores: por ahi no vibran. El
+    // driver HIDAPI de SDL los abre por USB y les manda la vibracion el mismo, pero en
+    // Android viene apagado. Se enciende antes de que SDL abra los mandos, solo con la
+    // vibracion puesta: al conectar uno pide permiso de USB. Por Bluetooth siguen por
+    // Android, que ahi si tiene sus motores.
+    if (std::strcmp(argv[i], "--input_vibracion=true") == 0) {
+      SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_XBOX, "1");
+    }
     // No es un cvar: se quita antes de que cvar::Init proteste.
     if (std::strcmp(argv[i], kArgSonda) == 0) {
       sonda = true;
@@ -863,4 +875,45 @@ Java_io_github_nfsmwrecomp_TouchControllerBridge_contextoDiagnostico(JNIEnv* env
                 int(contexto), g_instrucciones_bien, l.estado, l.pausas, l.carrera, l.parametros, l.indice,
                 l.coleccion, l.tipo, l.via, l.nombre);
   return env->NewStringUTF(linea);
+}
+
+// ---------------------------------------------------------------------------
+//  9. La vibracion del mando tactil
+// ---------------------------------------------------------------------------
+//
+// Su SDK le pasa a la app lo que el juego le pide al mando tactil
+// (parche_nativo.py): la fuerza de los dos motores del mando de la Xbox 360,
+// de 0 a 65535. El movil tiene uno: se usa el mas fuerte, en 16 niveles, y solo
+// se llama a Java cuando cambia de nivel (el juego lo repite a menudo). La
+// llama el hilo del juego; Java vibra con el Vibrator del sistema
+// (GameActivity.vibrarMando), que dura hasta que el juego la cambie, como el
+// mando de la Xbox 360. Los mandos fisicos vibran por su lado (SDL).
+
+namespace {
+
+std::atomic<int> g_nivel_vibracion{-1};
+
+}  // namespace
+
+extern "C" void NfsmwAndroidVibrar(uint16_t izquierdo, uint16_t derecho) {
+  const int fuerza = std::max<int>(izquierdo, derecho);
+  const int nivel = (fuerza + 4095) / 4096;  // 0..16
+  if (g_nivel_vibracion.exchange(nivel) == nivel) {
+    return;
+  }
+  auto* env = static_cast<JNIEnv*>(SDL_GetAndroidJNIEnv());
+  auto actividad = static_cast<jobject>(SDL_GetAndroidActivity());
+  if (!env || !actividad) {
+    return;
+  }
+  jclass clase = env->GetObjectClass(actividad);
+  jmethodID vibrar = env->GetStaticMethodID(clase, "vibrarMando", "(I)V");
+  if (vibrar) {
+    env->CallStaticVoidMethod(clase, vibrar, jint(std::min(255, nivel * 16)));
+  }
+  if (env->ExceptionCheck()) {
+    env->ExceptionClear();
+  }
+  env->DeleteLocalRef(clase);
+  env->DeleteLocalRef(actividad);
 }

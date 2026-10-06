@@ -175,6 +175,13 @@
     <string name="seccion_tactil">Touch controls</string>
     <string name="editar_tactil">Edit touch controls</string>
     <string name="editar_tactil_resumen">Move the touch buttons and change their size and opacity.</string>
+    <string name="vibracion">Vibration</string>
+    <string name="vibracion_resumen">The game rumbles the controller: crashes, nitrous, rough ground... A physical controller (USB or Bluetooth) vibrates; with none connected, the phone does.</string>
+    <string name="probar_vibracion">Test vibration</string>
+    <string name="vibracion_mando_motores">%1$s (%2$s): vibrating · motors: %3$d</string>
+    <string name="vibracion_mando_sin_motores">%1$s (%2$s): Android exposes no motors for this controller, so it can\'t vibrate.</string>
+    <string name="vibracion_mando_xbox_usb">%1$s (%2$s): over USB, Android exposes no motors for it, so this test can\'t make it vibrate. In the game SDL drives it over USB with its own vibration (it asks for USB permission when connected).</string>
+    <string name="vibracion_sin_mandos">No controller connected: the phone vibrates.</string>
     <string name="girar_inclinando">Steer by tilting the phone</string>
     <string name="girar_inclinando_resumen">In races and free roam, tilt the phone like a steering wheel instead of using the left stick, which is hidden. Drag races keep the lane arrows.</string>
     <string name="sensibilidad_giro">Steering sensitivity</string>

@@ -31,6 +31,10 @@ final class Ajustes {
      * el stick izquierdo (en la disposicion de conducir), y con que
      * sensibilidad: de SENSIBILIDAD_MIN a SENSIBILIDAD_MAX.
      */
+    /** Mando tactil: el movil vibra cuando el juego hace vibrar el mando. */
+    boolean vibracion() { return p.getBoolean("vibracion", true); }
+    void vibracion(boolean v) { p.edit().putBoolean("vibracion", v).apply(); }
+
     boolean girarInclinando() { return p.getBoolean("girar_inclinando", false); }
     void girarInclinando(boolean v) { p.edit().putBoolean("girar_inclinando", v).apply(); }
     static final int SENSIBILIDAD_MIN = 1;

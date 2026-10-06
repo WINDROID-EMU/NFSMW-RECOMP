@@ -251,6 +251,31 @@ ejecutable". En Android esa es `REX_APP_FOLDER`, que `MotorNativo.java` pone en
   iniciado el audio de SDL, por el que va esa pista.
 - **Mando táctil.** El mismo, pero el estado va directo al mando del juego
   (`rex_sdl_set_touch_gamepad_state` de su SDK) en vez de por un mando virtual de SDL.
+- **Vibración.** Su SDK la tiene apagada por defecto (`input_vibracion = false` en
+  `sdk/src/input/input_system.cpp`: `SetState` cambia lo que pide el juego por vibración
+  cero), así que la app pasa `--input_vibracion=` con el ajuste Vibración (encendido por
+  defecto). Los mandos físicos vibran por SDL (`SDL_RumbleGamepad`), si Android expone sus
+  motores (`InputDevice.getVibratorManager`, la clase `VIBRATOR` de `dumpsys input`).
+  Por USB, el kernel del RedMagic carga los mandos de Xbox con su xpad sin force feedback
+  y salen sin motores; por Bluetooth (`uhid`) sí los tienen. Por eso, con la vibración
+  puesta, `NfsmwSondaSiSePide` (lo primero del `main` de su SDK, antes de que SDL abra los
+  mandos) enciende `SDL_HINT_JOYSTICK_HIDAPI_XBOX`, que en Android viene apagado: el
+  driver HIDAPI de SDL abre los mandos de Xbox 360 y One/Series por USB
+  (`HIDDeviceManager`, pidiendo permiso de USB), se los quita al kernel y les manda la
+  vibración él mismo. Mientras, Android no los ve como `InputDevice`, así que
+  `TouchControllerView` también cuenta como mando físico los de Xbox que hay en
+  `UsbManager` (la misma interfaz que reconoce SDL) y escucha los avisos de USB. **Probar
+  vibración** (pantalla de inicio) hace vibrar cada mando con su vibrador de Android y
+  dice cuántos motores tiene; de un Xbox por USB avisa de que en la partida lo maneja SDL.
+  El mando táctil no tiene motores: `parche_nativo.py` hace que su driver de SDL
+  (`SetDeviceVibration`) llame a `NfsmwAndroidVibrar` de `nativo_android.cpp` (débil: si no
+  está, el mando táctil dice que no vibra), que pasa la fuerza mayor de los dos motores a
+  16 niveles y, solo cuando cambia, llama a `GameActivity.vibrarMando`, que deja el
+  vibrador del móvil con esa amplitud hasta el siguiente cambio. Se calla al minimizar,
+  con el editor del mando abierto y en el modo mando de `TouchControllerView` (un mando
+  físico, USB o Bluetooth, conectado o usado en la partida; el mismo que esconde los
+  controles táctiles): con mando físico vibra solo él. Los motivos se suman
+  (`GameActivity.callarVibracion`, `CALLADA_*`), como los de la pausa.
 - **Girar inclinando el móvil.** Opción de la pantalla de inicio (Controles táctiles). En la
   disposición de conducir, `TouchControllerView` lee el sensor de gravedad
   (`TYPE_GRAVITY`; si no hay, el acelerómetro con un filtro de paso bajo) a `SENSOR_DELAY_GAME`

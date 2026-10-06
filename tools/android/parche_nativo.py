@@ -17,6 +17,7 @@ app (..\\nfsmw-android\\app):
     app/src/nfsmw_nativo_sistema.cpp        parar el anillo en segundo plano
     app/src/nfsmw_ajustes_graficos.cpp      fps sin limite
     app/src/nfsmw_recortes_carrera.cpp      las direcciones del contexto del juego
+    sdk/src/input/sdl/sdl_input_driver.cpp  la vibracion del mando tactil
 
 Los demas que necesita ese SDK son los mismos que el nuestro y se aplican tal
 cual con NFSMW_SDK apuntando a el: parche_iso.py, parche_gamertag.py y
@@ -109,6 +110,16 @@ Los desplazamientos son los del 360 (en la de GameCube, mRaceParms va en
 crear_arbol.py las lleve a la USA y a la japonesa (en la japonesa fObj se mueve
 +0x5A0) y su comprobacion compare las funciones de las que salen los
 desplazamientos.
+
+
+7. LA VIBRACION DEL MANDO TACTIL
+===============================
+
+Su SDK le dice al juego que el mando tactil no tiene motores (caps.vibration a
+0) y, si aun asi le pide vibrar, no hace nada. Los mandos fisicos si vibran,
+por SDL. Aqui el tactil dice que tiene los dos motores y le pasa lo que pide el
+juego a la app (NfsmwAndroidVibrar, nativo_android.cpp), que hace vibrar el
+movil. Sin la app, como antes.
 """
 
 import argparse
@@ -301,6 +312,69 @@ namespace {
 constexpr uint32_t kBaseVistas = 0x82A38070;
 '''
 
+VIBRAR_DECL_ANCLA = '''
+namespace rex::input::sdl {
+
+namespace {
+
+// SDL clamps to SDL_MAX_RUMBLE_DURATION_MS, which is not a public constant.
+'''
+
+VIBRAR_DECL_NUEVO = '''
+#if REX_PLATFORM_ANDROID
+// PARCHE LOCAL (NFSMW Recompiled): la define la app de Android (nativo_android.cpp) y
+// hace vibrar el movil con lo que el juego le pide al mando tactil (0-65535 cada motor).
+extern "C" void NfsmwAndroidVibrar(uint16_t izquierdo, uint16_t derecho) __attribute__((weak));
+#endif
+
+namespace rex::input::sdl {
+
+namespace {
+
+// SDL clamps to SDL_MAX_RUMBLE_DURATION_MS, which is not a public constant.
+'''
+
+VIBRAR_PEDIR_ANCLA = '''  if (controller->is_touch) {
+    return X_ERROR_SUCCESS;
+  }
+
+  // XInput vibration holds until the guest changes it, but SDL rumble expires,
+'''
+
+VIBRAR_PEDIR_NUEVO = '''  if (controller->is_touch) {
+#if REX_PLATFORM_ANDROID
+    // PARCHE LOCAL (NFSMW Recompiled): el mando tactil vibra con el movil.
+    if (NfsmwAndroidVibrar) {
+      NfsmwAndroidVibrar(vibration->left_motor_speed, vibration->right_motor_speed);
+    }
+#endif
+    return X_ERROR_SUCCESS;
+  }
+
+  // XInput vibration holds until the guest changes it, but SDL rumble expires,
+'''
+
+VIBRAR_CAPS_ANCLA = '''    state.caps.vibration.left_motor_speed = 0;
+    state.caps.vibration.right_motor_speed = 0;
+    return;
+  }
+  assert(state.sdl);
+'''
+
+VIBRAR_CAPS_NUEVO = '''#if REX_PLATFORM_ANDROID
+    // PARCHE LOCAL (NFSMW Recompiled): con la app que hace vibrar el movil, el
+    // mando tactil tiene los dos motores.
+    const uint16_t motores = NfsmwAndroidVibrar ? 0xFFFFu : 0;
+#else
+    const uint16_t motores = 0;
+#endif
+    state.caps.vibration.left_motor_speed = motores;
+    state.caps.vibration.right_motor_speed = motores;
+    return;
+  }
+  assert(state.sdl);
+'''
+
 BLOQUES = [
     ("sdk/include/rex/filesystem.h", "declarar SetAndroidContentOpener", CABECERA_ANCLA, CABECERA_NUEVO),
     ("sdk/src/core/filesystem_posix.cpp", "abrir la URI con lo que ponga la app", FUENTE_ANCLA, FUENTE_NUEVO),
@@ -314,6 +388,12 @@ BLOQUES = [
      FPS_VBLANK_NUEVO),
     ("app/src/nfsmw_recortes_carrera.cpp", "direcciones del contexto del juego", CONTEXTO_ANCLA,
      CONTEXTO_NUEVO),
+    ("sdk/src/input/sdl/sdl_input_driver.cpp", "vibrar: declarar la de la app", VIBRAR_DECL_ANCLA,
+     VIBRAR_DECL_NUEVO),
+    ("sdk/src/input/sdl/sdl_input_driver.cpp", "vibrar: pasarle al movil lo que pide el juego",
+     VIBRAR_PEDIR_ANCLA, VIBRAR_PEDIR_NUEVO),
+    ("sdk/src/input/sdl/sdl_input_driver.cpp", "vibrar: el mando tactil tiene motores", VIBRAR_CAPS_ANCLA,
+     VIBRAR_CAPS_NUEVO),
 ]
 
 
