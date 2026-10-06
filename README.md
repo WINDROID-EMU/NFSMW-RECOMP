@@ -339,6 +339,11 @@ Thanks to everyone whose work this stands on.
   glslang and SPIRV-Tools, Dear ImGui, spdlog, fmt, xxHash, Vulkan Memory Allocator and
   toml++, among others
 
+**The touch controls**
+
+- [Windroid-emu](https://github.com/WINDROID-EMU/Windroid-emu) (MIT) — the layout, look and
+  feel of the on-screen controller, and the Quicksand font (SIL Open Font License)
+
 **The Android port**
 
 - [hells-gate-recomp-android](https://github.com/deivid22srk/hells-gate-recomp-android) by

@@ -221,6 +221,16 @@ proyecto vibe-codeado: ver la sección "This fork" del [README](README.md).
 
 ### Cambiado
 
+- Controles tactiles con el aspecto y el manejo de los de
+  [Windroid-emu](https://github.com/WINDROID-EMU/Windroid-emu) (`VirtualControllerInputView`),
+  en `TouchControllerView`: solo el contorno en blanco (relleno blanco y texto negro al
+  pulsar), fuente Quicksand, grosor del trazo proporcional al alto de la pantalla, sticks
+  con aro y pomo macizo (el pomo recorre media anchura del aro), cruceta en cuatro piezas con
+  forma de flecha y zona muerta de 0,25, START (tres rayas) y SELECT (dos cuadrados) como
+  botones redondos con su dibujo, y L3/R3 rotulados LS/RS. Sigue todo lo propio de este
+  proyecto: las disposiciones segun la parte del juego (pedales, palanca y flechas de carril
+  en aceleracion), girar inclinando el movil, el editor y lo ya guardado con el.
+
 - Driver de audio AAudio de Android (`android/app/src/main/cpp/audio/`), más ligero:
   - El anillo de muestras va **sin cerrojo** (un productor, un consumidor, con atómicos).
     Antes el callback de tiempo real de AAudio cogía el mismo mutex que el hilo del juego,

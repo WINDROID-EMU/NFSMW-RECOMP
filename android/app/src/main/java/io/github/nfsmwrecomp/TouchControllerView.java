@@ -88,12 +88,18 @@ public final class TouchControllerView extends View {
 
     // Color de acento #6F7432: botones pulsados y borde del boton HIDE/TOUCH.
     // Cada uso conserva su transparencia.
-    private static final int PULSADO = Color.argb(190, 0x6F, 0x74, 0x32);
-    private static final int PULSADO_CRUCETA = Color.argb(180, 0x6F, 0x74, 0x32);
+    // Estilo de Windroid-emu (VirtualControllerInputView): solo el contorno en
+    // blanco; pulsado, relleno blanco y el texto o icono en negro.
+    private static final int PULSADO = Color.WHITE;
+    private static final int PULSADO_CRUCETA = Color.argb(200, 255, 255, 255);
+    private static final int TINTA = Color.WHITE;
+    private static final int TINTA_PULSADA = Color.BLACK;
+    // Sticks y cruceta, un poco mas suaves que los botones (alfa 200 de 255).
+    private static final int BLANCO_SUAVE = Color.argb(200, 255, 255, 255);
     private static final int BORDE_TOGGLE = Color.argb(220, 0x6F, 0x74, 0x32);
     private static final int ACENTO = Color.rgb(0x6F, 0x74, 0x32);
-    private static final int RELLENO = Color.argb(105, 12, 12, 15);
-    private static final int BORDE = Color.argb(205, 255, 255, 255);
+    private static final int RELLENO = Color.TRANSPARENT;
+    private static final int BORDE = Color.WHITE;
     private static final int FONDO_BOTON = Color.argb(175, 15, 15, 18);
     private static final String PREF_VISIBLE = "visible";
     private static final String PREF_OPACIDAD = "opacidad";
@@ -107,6 +113,13 @@ public final class TouchControllerView extends View {
 
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+    // El contorno de los controles (no el de la interfaz del editor).
+    private final Paint contorno = new Paint(Paint.ANTI_ALIAS_FLAG);
+    // Grosor del contorno: 16 px sobre 1080 de alto en Windroid-emu.
+    private float grosor = 4f;
+    // Color de lo que se dibuja dentro del control que se esta pintando.
+    private int tinta = TINTA;
+    private final Path trazoSimbolo = new Path();
     private final Paint label = new Paint(Paint.ANTI_ALIAS_FLAG);
     // El recuadro del control elegido en el editor.
     private final Paint marco = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -217,6 +230,9 @@ public final class TouchControllerView extends View {
 
     // --- Segun la parte del juego.
     private static final long CONTEXTO_MS = 250;
+    private static final int SIMBOLO_NINGUNO = 0;
+    private static final int SIMBOLO_INICIO = 1;
+    private static final int SIMBOLO_SELECCION = 2;
     private static final int SIN_ICONO = 0;
     private static final int ICONO_CAMARA = 1;
     private static final int ICONO_RETROVISOR = 2;
@@ -363,12 +379,20 @@ public final class TouchControllerView extends View {
         fill.setStyle(Paint.Style.FILL);
         stroke.setStyle(Paint.Style.STROKE);
         stroke.setStrokeWidth(dp(2));
+        contorno.setStyle(Paint.Style.STROKE);
+        contorno.setStrokeCap(Paint.Cap.ROUND);
+        contorno.setStrokeJoin(Paint.Join.ROUND);
         marco.setStyle(Paint.Style.STROKE);
         marco.setStrokeWidth(dp(3));
         marco.setColor(ACENTO);
         label.setColor(Color.WHITE);
         label.setTextAlign(Paint.Align.CENTER);
-        label.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        try {
+            // La misma fuente que Windroid-emu.
+            label.setTypeface(getResources().getFont(R.font.quicksand));
+        } catch (RuntimeException e) {
+            label.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        }
         textoOcultar = context.getString(R.string.tactil_ocultar);
         textoMostrar = context.getString(R.string.tactil_mostrar);
         textoTamano = context.getString(R.string.editor_tamano);
@@ -520,6 +544,8 @@ public final class TouchControllerView extends View {
     private void buildControls(float width, float height) {
         lastWidth = width;
         lastHeight = height;
+        grosor = Math.max(dp(2), height * 16f / 1080f);
+        contorno.setStrokeWidth(grosor);
         controls.clear();
         float unit = Math.min(width / 16f, height / 9f);
         float stickRadius = unit * 0.78f;
@@ -577,15 +603,17 @@ public final class TouchControllerView extends View {
         controls.add(rb);
         controls.add(rightTrigger);
 
-        RectButton back = new RectButton("back", "BACK", width * .44f, height * .79f,
-                                         unit * .82f, unit * .45f, BACK);
-        RectButton start = new RectButton("start", "START", width * .55f, height * .79f,
-                                          unit * .92f, unit * .45f, START);
+        ButtonControl back = new ButtonControl("back", "BACK", width * .44f, height * .79f,
+                                               buttonRadius, BACK);
+        ButtonControl start = new ButtonControl("start", "START", width * .55f, height * .79f,
+                                                buttonRadius, START);
+        back.simbolo = SIMBOLO_SELECCION;
+        start.simbolo = SIMBOLO_INICIO;
         controls.add(back);
         controls.add(start);
-        ButtonControl l3 = new ButtonControl("l3", "L3", width * .07f, height * .48f,
+        ButtonControl l3 = new ButtonControl("l3", "LS", width * .07f, height * .48f,
                                              buttonRadius * .82f, L3);
-        ButtonControl r3 = new ButtonControl("r3", "R3", width * .73f, height * .48f,
+        ButtonControl r3 = new ButtonControl("r3", "RS", width * .73f, height * .48f,
                                              buttonRadius * .82f, R3);
         l3.visibleEn = EN_NORMAL;
         r3.visibleEn = EN_NORMAL;
@@ -633,8 +661,8 @@ public final class TouchControllerView extends View {
         // A la altura de OCULTAR/TACTIL (colocarBotones), a la misma distancia de
         // ese boton y del engranaje.
         float filaArriba = Math.max(dp(18), height * .035f) + unit * .23f;
-        back.porDefecto(ACELERACION, width * .41f, filaArriba, 1f);
-        start.porDefecto(ACELERACION, width * .622f, filaArriba, 1f);
+        back.porDefecto(ACELERACION, width * .41f, filaArriba, .65f);
+        start.porDefecto(ACELERACION, width * .622f, filaArriba, .65f);
 
         // --- La de fabrica conduciendo (las demas carreras, la conduccion libre
         // y las persecuciones): la de aceleracion, pero con el stick izquierdo
@@ -656,7 +684,7 @@ public final class TouchControllerView extends View {
         // palanca, que alli no existen. Posiciones en fracciones de la pantalla
         // (x/2400, y/1080); la escala lleva cada control al tamano que tiene
         // alli (circulos de 180 px, hombros de 260x130, sticks de 275 px).
-        float sStick = 1.47f, sBoton = 1.97f, sHombro = 1.8f, sCruz = 1.45f, sMenu = 1.3f, sL3 = 2.4f;
+        float sStick = 1.47f, sBoton = 1.97f, sHombro = 1.8f, sCruz = 1.45f, sMenu = 1.43f, sL3 = 2.4f;
         Control[] wdControles = {leftStick, rightStick, dpad, a, b, x, y, lb, rb, leftTrigger, rightTrigger,
                                  back, start, l3, r3};
         float[][] wd = {
@@ -1287,6 +1315,8 @@ public final class TouchControllerView extends View {
         final float baseRadius;
         final int mask;
         float radius;
+        // START y SELECT llevan un dibujo en vez de texto.
+        int simbolo = SIMBOLO_NINGUNO;
         ButtonControl(String id, String text, float x, float y, float radius, int mask) {
             super(id, x, y);
             this.text = text; this.baseRadius = radius; this.mask = mask;
@@ -1301,7 +1331,12 @@ public final class TouchControllerView extends View {
         int buttons() { return inUse ? mask : 0; }
         void draw(Canvas canvas) {
             drawCircle(canvas, cx, cy, radius, inUse);
-            drawLabel(canvas, text, cx, cy, radius * .72f, opacidad);
+            tinta = inUse ? TINTA_PULSADA : TINTA;
+            if (simbolo != SIMBOLO_NINGUNO) {
+                dibujarSimbolo(canvas, simbolo, cx, cy, radius);
+            } else {
+                drawLabelColor(canvas, text, cx, cy, radius * 1.33f, tinta);
+            }
         }
     }
 
@@ -1326,11 +1361,16 @@ public final class TouchControllerView extends View {
         boolean contains(float x, float y) { return bounds.contains(x, y); }
         int buttons() { return inUse ? mask : 0; }
         void draw(Canvas canvas) {
-            float r = Math.min(dp(10), bounds.height() * .5f);
-            fill.setColor(conOpacidad(inUse ? PULSADO : RELLENO));
-            stroke.setColor(conOpacidad(BORDE));
-            canvas.drawRoundRect(bounds, r, r, fill);
-            canvas.drawRoundRect(bounds, r, r, stroke);
+            // Esquinas de 32 px sobre 130 de alto, como en Windroid-emu.
+            float r = bounds.height() * .246f;
+            if (inUse) {
+                fill.setColor(conOpacidad(PULSADO));
+                canvas.drawRoundRect(bounds, r, r, fill);
+            }
+            contorno.setStrokeWidth(grosor);
+            contorno.setColor(conOpacidad(BORDE));
+            canvas.drawRoundRect(bounds, r, r, contorno);
+            tinta = inUse ? TINTA_PULSADA : TINTA;
             if (icono == ICONO_CAMARA && formasDeConducir()) {
                 dibujarCamara(canvas, bounds);
             } else if (icono == ICONO_RETROVISOR && formasDeConducir()) {
@@ -1338,7 +1378,7 @@ public final class TouchControllerView extends View {
             } else if (icono == ICONO_POSICIONES && formasDeConducir()) {
                 dibujarPosiciones(canvas, bounds);
             } else {
-                drawLabel(canvas, text, bounds.centerX(), bounds.centerY(), dp(11) * escala, opacidad);
+                drawLabelColor(canvas, text, bounds.centerX(), bounds.centerY(), bounds.height() * .92f, tinta);
             }
         }
     }
@@ -1419,8 +1459,10 @@ public final class TouchControllerView extends View {
                 yValue = dy < -.3f ? -1 : dy > .3f ? 1 : 0;
                 return;
             }
-            float dx = (x - cx) / radius;
-            float dy = (y - cy) / radius;
+            // Como en Windroid-emu: el pomo recorre media ancha del aro, y ahi
+            // el eje llega a 1.
+            float dx = (x - cx) / (radius * .5f);
+            float dy = (y - cy) / (radius * .5f);
             float length = (float) Math.sqrt(dx * dx + dy * dy);
             if (length > 1) { dx /= length; dy /= length; }
             float deadzone = .08f;
@@ -1437,22 +1479,23 @@ public final class TouchControllerView extends View {
                 dibujarPalanca(canvas);
                 return;
             }
-            drawCircle(canvas, cx, cy, radius, false);
-            float knobX = cx + xValue * radius * .58f;
-            float knobY = cy + yValue * radius * .58f;
-            drawCircle(canvas, knobX, knobY, radius * .43f, inUse);
-            drawLabel(canvas, text, knobX, knobY, radius * .34f, opacidad);
+            contorno.setStrokeWidth(grosor);
+            contorno.setColor(conOpacidad(BLANCO_SUAVE));
+            canvas.drawCircle(cx, cy, radius, contorno);
+            float knobX = cx + xValue * radius * .5f;
+            float knobY = cy + yValue * radius * .5f;
+            fill.setColor(conOpacidad(BLANCO_SUAVE));
+            canvas.drawCircle(knobX, knobY, radius * .5f, fill);
         }
         /** Una ranura vertical con el pomo: + arriba, - abajo. */
         void dibujarPalanca(Canvas canvas) {
             float ancho = radius * .36f;
             ranura.set(cx - ancho * .5f, cy - radius, cx + ancho * .5f, cy + radius);
-            fill.setColor(conOpacidad(RELLENO));
-            stroke.setColor(conOpacidad(BORDE));
-            canvas.drawRoundRect(ranura, ancho * .5f, ancho * .5f, fill);
-            canvas.drawRoundRect(ranura, ancho * .5f, ancho * .5f, stroke);
-            drawLabel(canvas, "+", cx + radius * .55f, cy - radius * .7f, radius * .42f, opacidad);
-            drawLabel(canvas, "\u2212", cx + radius * .55f, cy + radius * .7f, radius * .42f, opacidad);
+            contorno.setStrokeWidth(grosor);
+            contorno.setColor(conOpacidad(BLANCO_SUAVE));
+            canvas.drawRoundRect(ranura, ancho * .5f, ancho * .5f, contorno);
+            drawLabelColor(canvas, "+", cx + radius * .55f, cy - radius * .7f, radius * .42f, TINTA);
+            drawLabelColor(canvas, "\u2212", cx + radius * .55f, cy + radius * .7f, radius * .42f, TINTA);
             drawCircle(canvas, cx, cy + yValue * radius * .72f, radius * .36f, inUse);
         }
     }
@@ -1488,12 +1531,15 @@ public final class TouchControllerView extends View {
         float alcance() { return caja.width() * .5f; }
         boolean contains(float x, float y) { return caja.contains(x, y); }
         void draw(Canvas canvas) {
-            float r = Math.min(dp(10), caja.height() * .2f);
-            fill.setColor(conOpacidad(inUse ? PULSADO : RELLENO));
-            stroke.setColor(conOpacidad(BORDE));
-            canvas.drawRoundRect(caja, r, r, fill);
-            canvas.drawRoundRect(caja, r, r, stroke);
-            fill.setColor(conOpacidad(BORDE));
+            float r = caja.height() * .246f;
+            if (inUse) {
+                fill.setColor(conOpacidad(PULSADO));
+                canvas.drawRoundRect(caja, r, r, fill);
+            }
+            contorno.setStrokeWidth(grosor);
+            contorno.setColor(conOpacidad(BORDE));
+            canvas.drawRoundRect(caja, r, r, contorno);
+            fill.setColor(conOpacidad(inUse ? TINTA_PULSADA : TINTA));
             canvas.drawPath(flecha, fill);
         }
     }
@@ -1502,9 +1548,11 @@ public final class TouchControllerView extends View {
         final float baseRadius;
         float radius;
         // La forma no cambia al jugar, solo el color: se calcula en colocar()
-        // en vez de crear dos RectF nuevos en cada dibujado.
-        final RectF vertical = new RectF();
-        final RectF horizontal = new RectF();
+        // en vez de crear los caminos en cada dibujado.
+        final Path arriba = new Path();
+        final Path abajo = new Path();
+        final Path izquierda = new Path();
+        final Path derecha = new Path();
         int mask;
         Dpad(String id, float x, float y, float radius) {
             super(id, x, y);
@@ -1513,9 +1561,39 @@ public final class TouchControllerView extends View {
         }
         void colocar() {
             radius = baseRadius * escala;
-            float arm = radius * .36f;
-            vertical.set(cx - arm, cy - radius, cx + arm, cy + radius);
-            horizontal.set(cx - radius, cy - arm, cx + radius, cy + arm);
+            // Windroid-emu lo dibuja con radio 200, y ocupa 170 desde el centro.
+            float w = radius * 200f / 170f;
+            float g = w * .1f;       // el hueco central (20 sobre 200)
+            float c = w / 4f;
+            float m = w / 2f;
+            izquierda.reset();
+            izquierda.moveTo(cx - g, cy);
+            izquierda.lineTo(cx - g - c, cy - c);
+            izquierda.lineTo(cx - g - c - m, cy - c);
+            izquierda.lineTo(cx - g - c - m, cy - c + m);
+            izquierda.lineTo(cx - g - c, cy - c + m);
+            izquierda.close();
+            arriba.reset();
+            arriba.moveTo(cx, cy - g);
+            arriba.lineTo(cx - c, cy - g - c);
+            arriba.lineTo(cx - c, cy - g - c - m);
+            arriba.lineTo(cx - c + m, cy - g - c - m);
+            arriba.lineTo(cx - c + m, cy - g - c);
+            arriba.close();
+            derecha.reset();
+            derecha.moveTo(cx + g, cy);
+            derecha.lineTo(cx + g + c, cy - c);
+            derecha.lineTo(cx + g + c + m, cy - c);
+            derecha.lineTo(cx + g + c + m, cy - c + m);
+            derecha.lineTo(cx + g + c, cy - c + m);
+            derecha.close();
+            abajo.reset();
+            abajo.moveTo(cx, cy + g);
+            abajo.lineTo(cx - c, cy + g + c);
+            abajo.lineTo(cx - c, cy + g + c + m);
+            abajo.lineTo(cx - c + m, cy + g + c + m);
+            abajo.lineTo(cx - c + m, cy + g + c);
+            abajo.close();
         }
         float alcance() { return radius; }
         boolean contains(float x, float y) {
@@ -1523,7 +1601,8 @@ public final class TouchControllerView extends View {
         }
         void move(float x, float y) {
             float dx = x - cx, dy = y - cy;
-            float threshold = radius * .20f;
+            // Zona muerta de 0.25 sobre el radio 200 de Windroid-emu.
+            float threshold = radius * 200f / 170f * .25f;
             mask = 0;
             if (dx < -threshold) mask |= DPAD_LEFT;
             if (dx > threshold) mask |= DPAD_RIGHT;
@@ -1532,14 +1611,18 @@ public final class TouchControllerView extends View {
         }
         void release() { super.release(); mask = 0; }
         int buttons() { return inUse ? mask : 0; }
+        private void pieza(Canvas canvas, Path forma, int bit) {
+            if (inUse && (mask & bit) != 0) canvas.drawPath(forma, fill);
+            canvas.drawPath(forma, contorno);
+        }
         void draw(Canvas canvas) {
-            fill.setColor(conOpacidad(inUse ? PULSADO_CRUCETA : RELLENO));
-            stroke.setColor(conOpacidad(BORDE));
-            float r = dp(6);
-            canvas.drawRoundRect(vertical, r, r, fill);
-            canvas.drawRoundRect(horizontal, r, r, fill);
-            canvas.drawRoundRect(vertical, r, r, stroke);
-            canvas.drawRoundRect(horizontal, r, r, stroke);
+            contorno.setStrokeWidth(grosor);
+            contorno.setColor(conOpacidad(BLANCO_SUAVE));
+            fill.setColor(conOpacidad(PULSADO_CRUCETA));
+            pieza(canvas, arriba, DPAD_UP);
+            pieza(canvas, abajo, DPAD_DOWN);
+            pieza(canvas, izquierda, DPAD_LEFT);
+            pieza(canvas, derecha, DPAD_RIGHT);
         }
     }
 
@@ -1548,16 +1631,22 @@ public final class TouchControllerView extends View {
         pisado.set(r);
         if (pisadoAhora) pisado.inset(r.width() * .05f, r.height() * .05f);
         float radio = pisado.width() * (freno ? .18f : .28f);
-        fill.setColor(conOpacidad(pisadoAhora ? PULSADO : RELLENO));
-        stroke.setColor(conOpacidad(BORDE));
-        canvas.drawRoundRect(pisado, radio, radio, fill);
-        canvas.drawRoundRect(pisado, radio, radio, stroke);
+        if (pisadoAhora) {
+            fill.setColor(conOpacidad(PULSADO));
+            canvas.drawRoundRect(pisado, radio, radio, fill);
+        }
+        contorno.setStrokeWidth(grosor);
+        contorno.setColor(conOpacidad(BORDE));
+        canvas.drawRoundRect(pisado, radio, radio, contorno);
+        // Las estrias, mas finas, y en negro sobre el pedal blanco.
+        contorno.setStrokeWidth(grosor * .6f);
+        contorno.setColor(conOpacidad(pisadoAhora ? TINTA_PULSADA : TINTA));
         int estrias = freno ? 4 : 6;
         float margen = pisado.width() * .2f;
         float paso = pisado.height() / (estrias + 1);
         for (int i = 1; i <= estrias; ++i) {
             float y = pisado.top + paso * i;
-            canvas.drawLine(pisado.left + margen, y, pisado.right - margen, y, stroke);
+            canvas.drawLine(pisado.left + margen, y, pisado.right - margen, y, contorno);
         }
     }
 
@@ -1567,12 +1656,13 @@ public final class TouchControllerView extends View {
         float ancho = alto * 1.45f;
         float x = caja.centerX();
         float y = caja.centerY() + alto * .06f;
-        stroke.setColor(conOpacidad(BORDE));
+        contorno.setStrokeWidth(grosor * .6f);
+        contorno.setColor(conOpacidad(tinta));
         trazo.set(x - ancho * .16f, y - alto * .62f, x + ancho * .16f, y - alto * .4f);
-        canvas.drawRoundRect(trazo, dp(2), dp(2), stroke);
+        canvas.drawRoundRect(trazo, dp(2), dp(2), contorno);
         trazo.set(x - ancho * .5f, y - alto * .4f, x + ancho * .5f, y + alto * .5f);
-        canvas.drawRoundRect(trazo, alto * .15f, alto * .15f, stroke);
-        canvas.drawCircle(x, y + alto * .05f, alto * .26f, stroke);
+        canvas.drawRoundRect(trazo, alto * .15f, alto * .15f, contorno);
+        canvas.drawCircle(x, y + alto * .05f, alto * .26f, contorno);
     }
 
     /** La clasificacion, como su icono en el juego: tres puestos con su linea. */
@@ -1580,11 +1670,12 @@ public final class TouchControllerView extends View {
         float alto = caja.height() * .56f;
         float paso = alto / 3f;
         float x = caja.centerX() - alto * .5f;
-        stroke.setColor(conOpacidad(BORDE));
+        contorno.setStrokeWidth(grosor * .6f);
+        contorno.setColor(conOpacidad(tinta));
         for (int i = 0; i < 3; ++i) {
             float y = caja.centerY() - alto * .5f + paso * (i + .5f);
-            drawLabel(canvas, PUESTOS[i], x, y, paso * .85f, opacidad);
-            canvas.drawLine(x + alto * .28f, y, x + alto * 1.05f, y, stroke);
+            drawLabelColor(canvas, PUESTOS[i], x, y, paso * .85f, tinta);
+            canvas.drawLine(x + alto * .28f, y, x + alto * 1.05f, y, contorno);
         }
     }
 
@@ -1594,19 +1685,56 @@ public final class TouchControllerView extends View {
         float ancho = Math.min(caja.width() * .7f, alto * 2.6f);
         float x = caja.centerX();
         float y = caja.centerY() + alto * .2f;
-        stroke.setColor(conOpacidad(BORDE));
-        canvas.drawLine(x, y - alto * .5f, x, y - alto * 1.05f, stroke);
+        contorno.setStrokeWidth(grosor * .6f);
+        contorno.setColor(conOpacidad(tinta));
+        canvas.drawLine(x, y - alto * .5f, x, y - alto * 1.05f, contorno);
         trazo.set(x - ancho * .5f, y - alto * .5f, x + ancho * .5f, y + alto * .5f);
-        canvas.drawRoundRect(trazo, alto * .5f, alto * .5f, stroke);
-        canvas.drawLine(x - ancho * .25f, y + alto * .2f, x - ancho * .05f, y - alto * .2f, stroke);
-        canvas.drawLine(x - ancho * .05f, y + alto * .2f, x + ancho * .15f, y - alto * .2f, stroke);
+        canvas.drawRoundRect(trazo, alto * .5f, alto * .5f, contorno);
+        canvas.drawLine(x - ancho * .25f, y + alto * .2f, x - ancho * .05f, y - alto * .2f, contorno);
+        canvas.drawLine(x - ancho * .05f, y + alto * .2f, x + ancho * .15f, y - alto * .2f, contorno);
     }
 
     private void drawCircle(Canvas canvas, float x, float y, float radius, boolean pressed) {
-        fill.setColor(conOpacidad(pressed ? PULSADO : RELLENO));
-        stroke.setColor(conOpacidad(BORDE));
-        canvas.drawCircle(x, y, radius, fill);
-        canvas.drawCircle(x, y, radius, stroke);
+        if (pressed) {
+            fill.setColor(conOpacidad(PULSADO));
+            canvas.drawCircle(x, y, radius, fill);
+        }
+        contorno.setStrokeWidth(grosor);
+        contorno.setColor(conOpacidad(BORDE));
+        canvas.drawCircle(x, y, radius, contorno);
+    }
+
+    /**
+     * Los dibujos de START (tres rayas) y SELECT (dos cuadrados), los de
+     * Windroid-emu. 'radio' es el del circulo, la mitad del que usa alli.
+     */
+    private void dibujarSimbolo(Canvas canvas, int cual, float x, float y, float radio) {
+        contorno.setStrokeWidth(grosor * .75f);
+        contorno.setColor(conOpacidad(tinta));
+        if (cual == SIMBOLO_INICIO) {
+            float a = radio * 2f / 3f;
+            float paso = radio * .25f;
+            for (int i = -1; i <= 1; ++i) {
+                canvas.drawLine(x - a, y + i * paso, x + a, y + i * paso, contorno);
+            }
+            return;
+        }
+        // Medidas de alli (circulo de 65): se escalan al circulo de aqui.
+        float u = radio / 65f;
+        float ax = x - 28.5f * u;
+        float ay = y - 32.5f * u;
+        trazoSimbolo.reset();
+        trazoSimbolo.moveTo(ax, ay + 40f * u);
+        trazoSimbolo.lineTo(ax, ay);
+        trazoSimbolo.lineTo(ax + 40f * u, ay);
+        trazoSimbolo.lineTo(ax + 40f * u, ay + 20f * u);
+        trazoSimbolo.moveTo(ax + 20f * u, ay + 24f * u);
+        trazoSimbolo.lineTo(ax + 20f * u, ay + 70f * u);
+        trazoSimbolo.lineTo(ax + 60f * u, ay + 70f * u);
+        trazoSimbolo.lineTo(ax + 60f * u, ay + 30f * u);
+        trazoSimbolo.lineTo(ax + 20f * u, ay + 30f * u);
+        trazoSimbolo.close();
+        canvas.drawPath(trazoSimbolo, contorno);
     }
 
     /** El color con su transparencia multiplicada por la opacidad del editor. */
@@ -1616,9 +1744,19 @@ public final class TouchControllerView extends View {
 
     private void drawLabel(Canvas canvas, String text, float x, float y, float size, float alfa) {
         label.setTextSize(size);
+        label.setColor(Color.WHITE);
         label.setAlpha(Math.round(255 * alfa));
         label.getFontMetrics(metricas);
         canvas.drawText(text, x, y - (metricas.ascent + metricas.descent) / 2, label);
+    }
+
+    /** Un texto de un control, del color que le toque (blanco, o negro si esta pulsado). */
+    private void drawLabelColor(Canvas canvas, String text, float x, float y, float size, int color) {
+        label.setTextSize(size);
+        label.setColor(conOpacidad(color));
+        label.getFontMetrics(metricas);
+        canvas.drawText(text, x, y - (metricas.ascent + metricas.descent) / 2, label);
+        label.setColor(Color.WHITE);
     }
 
     private float dp(float value) {
