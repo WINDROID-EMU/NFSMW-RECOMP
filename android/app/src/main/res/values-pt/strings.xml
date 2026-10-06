@@ -156,6 +156,13 @@
     <string name="seccion_tactil">Controles de toque</string>
     <string name="editar_tactil">Editar controles de toque</string>
     <string name="editar_tactil_resumen">Mova os botões de toque e mude o tamanho e a opacidade.</string>
+    <string name="vibracion">Vibração</string>
+    <string name="vibracion_resumen">O jogo faz o controle vibrar: batidas, nitro, terreno... Vibra o controle físico (USB ou Bluetooth); se não houver nenhum, o celular.</string>
+    <string name="probar_vibracion">Testar vibração</string>
+    <string name="vibracion_mando_motores">%1$s (%2$s): vibrando · motores: %3$d</string>
+    <string name="vibracion_mando_sin_motores">%1$s (%2$s): o Android não expõe motores para este controle, então ele não pode vibrar.</string>
+    <string name="vibracion_mando_xbox_usb">%1$s (%2$s): via USB, o Android não expõe motores para ele e este teste não consegue fazê-lo vibrar. No jogo o SDL o controla direto via USB, com a vibração dele (pede permissão de USB ao conectar).</string>
+    <string name="vibracion_sin_mandos">Nenhum controle conectado: o celular vibra.</string>
     <string name="girar_inclinando">Virar inclinando o celular</string>
     <string name="girar_inclinando_resumen">Nas corridas e dirigindo livre, incline o celular como um volante em vez de usar o analógico esquerdo, que fica oculto. Nas de arrancada continuam as setas de faixa.</string>
     <string name="sensibilidad_giro">Sensibilidade do volante</string>

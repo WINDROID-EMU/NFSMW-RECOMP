@@ -203,6 +203,10 @@ final class MotorNativo {
         // limitador lo comprime y los momentos fuertes se oyen aplastados.
         a.add("--audio_ganancia_pct=100");
         a.add("--nfsmw_audio_aaudio=" + ajustes.audioAAudio());
+        // Su SDK viene con la vibracion apagada (a los mandos solo les llega cero):
+        // con el ajuste, la del juego, en los mandos fisicos y, por la app, en el
+        // movil con el mando tactil.
+        a.add("--input_vibracion=" + ajustes.vibracion());
         if (ajustes.compatibilidad()) {
             argumentosCompatibilidad(a);
         } else {
