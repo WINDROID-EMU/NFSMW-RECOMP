@@ -650,6 +650,42 @@ public final class TouchControllerView extends View {
         leftStick.porDefecto(CONDUCIENDO, width - (pedalesIzq + pedalesDer) * .5f, pie - stickRadius, 1f);
         dpad.porDefecto(CONDUCIENDO, width - romboX, romboY, 1f);
 
+        // --- La disposicion de Windroid-emu (VirtualControllerInputView, hecha
+        // sobre 2400x1080), para la normal (menus y cargas) y para conducir. La
+        // de aceleracion se queda con la suya: tiene flechas de carril y
+        // palanca, que alli no existen. Posiciones en fracciones de la pantalla
+        // (x/2400, y/1080); la escala lleva cada control al tamano que tiene
+        // alli (circulos de 180 px, hombros de 260x130, sticks de 275 px).
+        float sStick = 1.47f, sBoton = 1.97f, sHombro = 1.8f, sCruz = 1.45f, sMenu = 1.3f, sL3 = 2.4f;
+        Control[] wdControles = {leftStick, rightStick, dpad, a, b, x, y, lb, rb, leftTrigger, rightTrigger,
+                                 back, start, l3, r3};
+        float[][] wd = {
+            // x,      y,      escala
+            {.1167f, .7778f, sStick},   // stick izquierdo
+            {.7292f, .4444f, sStick},   // stick derecho
+            {.2667f, .4444f, sCruz},    // cruceta
+            {.8604f, .8426f, sBoton},   // A
+            {.9188f, .6806f, sBoton},   // B
+            {.8021f, .6806f, sBoton},   // X
+            {.8604f, .5185f, sBoton},   // Y
+            {.1167f, .2778f, sHombro},  // LB
+            {.8604f, .2778f, sHombro},  // RB
+            {.1167f, .1296f, sHombro},  // LT
+            {.8604f, .1296f, sHombro},  // RT
+            {.4667f, .9074f, sMenu},    // BACK (SELECT)
+            {.5542f, .9074f, sMenu},    // START
+            {.3667f, .9074f, sL3},      // L3
+            {.6500f, .9074f, sL3},      // R3
+        };
+        for (int i = 0; i < wdControles.length; ++i) {
+            Control c = wdControles[i];
+            float ex = width * wd[i][0], ey = height * wd[i][1], es = wd[i][2];
+            c.porDefecto(NORMAL, ex, ey, es);
+            // Conduciendo: pedales y palanca algo mas pequenos que en la normal.
+            boolean pedal2 = c == leftTrigger || c == rightTrigger;
+            c.porDefecto(CONDUCIENDO, ex, ey, pedal2 ? 1.2f : c == rightStick ? 1.2f : es);
+        }
+
         for (Control c : controls) cargar(c);
         usarDisposicion(disposicion());
         colocarBotones(width, height, unit);
